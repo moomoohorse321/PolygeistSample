@@ -58,6 +58,8 @@
 #include "mlir/Target/LLVMIR/Export.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "mlir/Transforms/Passes.h"
+#include "mlir/Parser/Parser.h"
+#include "mlir/Support/FileUtilities.h"
 
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Verifier.h"
@@ -251,6 +253,10 @@ static cl::opt<std::string> TargetTripleOpt("target", cl::init(""),
 static cl::opt<bool> InBoundsGEP("inbounds-gep", cl::init(false),
                                  cl::desc("Use inbounds GEP operations"),
                                  cl::cat(toolOptions));
+
+static cl::opt<bool> ImportMLIR("import-mlir", cl::init(false),
+                                cl::desc("Import MLIR"),
+                                cl::cat(toolOptions));
 
 static cl::opt<int>
     CanonicalizeIterations("canonicalizeiters", cl::init(400),
@@ -583,7 +589,39 @@ int main(int argc, char **argv) {
   llvm::DataLayout gpuDL("");
   if (!parseMLIR(argv[0], files, cfunction, includeDirs, defines, module,
                  triple, DL, gpuTriple, gpuDL)) {
-    return 1;
+     
+    if (ImportMLIR) {
+      std::string errorMessage;
+      // llvm::errs() << "Importing MLIR is not supported yet\n";
+      if(files.size() > 1) {
+        llvm::errs() << "Importing multiple files is not supported yet\n";
+        return 1;
+      }
+      auto mlir_file_path = files[0];
+      auto file = mlir::openInputFile(mlir_file_path, &errorMessage);
+      if(!file) {
+        llvm::errs() << "Failed to open file: " << mlir_file_path << "\n";
+        return 1;
+      }
+      // Create a source manager
+      llvm::SourceMgr sourceMgr;
+      sourceMgr.AddNewSourceBuffer(std::move(file), llvm::SMLoc());
+
+      // Create parser config
+      mlir::ParserConfig config(&context);
+
+      // Parse the file
+      module = parseSourceFile<ModuleOp>(sourceMgr, config);
+      if (!module) {
+        llvm::errs() << "Failed to parse MLIR file\n";
+        return 1;
+      }
+      // // print module
+      // module->print(llvm::outs(), OpPrintingFlags());
+      // return 1;
+    } else {
+      return 1;
+    }
   }
 
   auto convertGepInBounds = [](llvm::Module &llvmModule) {
@@ -1195,6 +1233,7 @@ int main(int argc, char **argv) {
         }
       }
     }
+    // llvm::outs() << *llvmModule << "\n";
     llvmModule->setDataLayout(DL);
     llvmModule->setTargetTriple(triple.getTriple());
     if (!EmitAssembly) {
