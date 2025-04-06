@@ -42,12 +42,7 @@ For faster compilation we recommend using `-DLLVM_USE_LINKER=lld`.
 ```sh
 mkdir build
 cd build
-cmake -G Ninja .. \
-  -DMLIR_DIR=$PWD/../llvm-project/build/lib/cmake/mlir \
-  -DCLANG_DIR=$PWD/../llvm-project/build/lib/cmake/clang \
-  -DLLVM_TARGETS_TO_BUILD="host" \
-  -DLLVM_ENABLE_ASSERTIONS=ON \
-  -DCMAKE_BUILD_TYPE=DEBUG
+cmake -G Ninja ..   -DMLIR_DIR=$PWD/../llvm-project/build/lib/cmake/mlir   -DCLANG_DIR=$PWD/../llvm-project/build/lib/cmake/clang   -DLLVM_TARGETS_TO_BUILD="host"   -DLLVM_ENABLE_ASSERTIONS=ON   -DCMAKE_BUILD_TYPE=DEBUG -DLLVM_USE_LINKER=lld -DCMAKE_C_COMPILER=$PWD/../llvm-project/build/bin/clang -DCMAKE_CXX_COMPILER=$PWD/../llvm-project/build/bin/clang++ -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache 
 ninja
 ninja check-polygeist-opt && ninja check-cgeist
 ```

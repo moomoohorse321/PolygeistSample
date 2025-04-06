@@ -210,6 +210,12 @@ static cl::opt<bool> NoCUDALib("nocudalib", cl::init(false),
 
 static cl::opt<std::string> Output("o", cl::init("-"), cl::desc("Output file"));
 
+static cl::opt<std::string> MLIRPath("mlir-path", 
+                                        cl::init("-"),
+                                        cl::desc(
+                                            "Path to mlir file"),
+                                        cl::cat(toolOptions));
+
 static cl::opt<std::string> cfunction("function",
                                       cl::desc("<Specify function>"),
                                       cl::init("*"), cl::cat(toolOptions));
@@ -624,6 +630,7 @@ int main(int argc, char **argv) {
     }
   }
 
+
   auto convertGepInBounds = [](llvm::Module &llvmModule) {
     for (auto &F : llvmModule) {
       for (auto &BB : F) {
@@ -653,7 +660,19 @@ int main(int argc, char **argv) {
     flags.enableDebugInfo(/*pretty*/ false);
 
   if (ImmediateMLIR) {
-    module->print(llvm::outs(), flags);
+    if (MLIRPath == "-") {
+      // Print to stdout.
+      module->print(llvm::outs(), flags);
+    } else {
+      std::error_code EC;
+      llvm::raw_fd_ostream os(MLIRPath, EC, llvm::sys::fs::OF_None);
+      if (EC) {
+        llvm::errs() << "error opening file: " << EC.message() << "\n";
+        return 1;
+      }
+      module->print(os, flags);
+      os.close();
+    }
     return 0;
   }
 

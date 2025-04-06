@@ -136,3 +136,4 @@ set(POLYGEIST_ENABLE_APPROXMLIR ON) # Always enabled
 message(STATUS "Building ApproxMLIR in ${CMAKE_CURRENT_SOURCE_DIR}/approxMLIR")
 # Add before the other add_subdirectory calls, around line ~170
 add_subdirectory(approxMLIR)
+add_subdirectory(test_approx)
