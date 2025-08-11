@@ -1,12 +1,17 @@
 get_property(dialect_libs GLOBAL PROPERTY MLIR_DIALECT_LIBS)
 get_property(conversion_libs GLOBAL PROPERTY MLIR_CONVERSION_LIBS)
 set(LIBS
+        
+        MLIRapproxMLIR
+        MLIRApproxMLIRTransforms
+        
         ${dialect_libs}
         ${conversion_libs}
         MLIROptLib
         MLIRPolygeist
         MLIRPolygeistTransforms
         MLIRFuncAllExtensions
+
 )
 if(POLYGEIST_ENABLE_POLYMER)
         list(APPEND LIBS

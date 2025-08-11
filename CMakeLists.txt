@@ -126,8 +126,12 @@ set(LLVM_LIT_ARGS "-sv" CACHE STRING "lit default options")
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/modules")
 include(sanitizers)
 
+
 add_subdirectory(include)
 add_subdirectory(lib)
+
+add_subdirectory(approxMLIR)
+
 add_subdirectory(tools)
 add_subdirectory(test)
 
@@ -135,5 +139,4 @@ set(POLYGEIST_ENABLE_APPROXMLIR ON) # Always enabled
 
 message(STATUS "Building ApproxMLIR in ${CMAKE_CURRENT_SOURCE_DIR}/approxMLIR")
 # Add before the other add_subdirectory calls, around line ~170
-add_subdirectory(approxMLIR)
 add_subdirectory(test_approx)

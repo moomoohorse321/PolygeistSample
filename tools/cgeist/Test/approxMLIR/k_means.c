@@ -1,4 +1,5 @@
-// RUN: cgeist %s --function=kmeans_kernel -S > %s.mlir 
+// RUN: cgeist -O0 %stdinclude %s -S > %s.mlir 
+// RUN: cgeist -O0 %stdinclude %s -o %s.exec 
 
 #include <math.h>
 #include <stdlib.h>

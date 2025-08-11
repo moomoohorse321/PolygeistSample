@@ -33,6 +33,13 @@
 #include "polygeist/Dialect.h"
 #include "polygeist/Passes/Passes.h"
 
+#include "approxMLIR/Dialect.h"
+#include "approxMLIR/approxMLIROpsDialect.cpp.inc"
+#include "approxMLIR/Passes/Passes.h"
+
+
+
+
 using namespace mlir;
 
 class MemRefInsider
@@ -61,6 +68,8 @@ int main(int argc, char **argv) {
   registry.insert<mlir::cf::ControlFlowDialect>();
   registry.insert<mlir::polygeist::PolygeistDialect>();
   registry.insert<DLTIDialect>();
+  
+  registry.insert<mlir::approxMLIR::approxMLIRDialect>();
 
   mlir::registerpolygeistPasses();
   mlir::func::registerInlinerExtension(registry);
@@ -75,6 +84,12 @@ int main(int argc, char **argv) {
   mlir::registerLoopInvariantCodeMotionPass();
   mlir::registerConvertSCFToOpenMPPass();
   mlir::affine::registerAffinePasses();
+
+  
+  mlir::approxMLIR::registerEmitApproxPass();
+  mlir::approxMLIR::registerConfigApproxPass();
+  mlir::approxMLIR::registerPreEmitTransformationPass();
+  mlir::approxMLIR::registerTransformApproxPass();
 
   registry.addExtension(+[](MLIRContext *ctx, LLVM::LLVMDialect *dialect) {
     LLVM::LLVMFunctionType::attachInterface<MemRefInsider>(*ctx);
