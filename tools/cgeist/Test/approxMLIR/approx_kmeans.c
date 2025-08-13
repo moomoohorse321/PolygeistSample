@@ -9,84 +9,154 @@
 #include <time.h>
 #include <string.h>
 
-// Euclidean distance between two points
-double distance(double *point1, double *point2, int dim) {
+// Error knob 1: Distance calculation inner loop (loop perforation on dimensions)
+double compute_squared_distance(double *point1, double *point2, int dim) {
     double sum = 0.0;
     for (int i = 0; i < dim; i++) {
         double diff = point1[i] - point2[i];
         sum += diff * diff;
     }
-    return sqrt(sum);
+    return sum;
+}
+
+// Euclidean distance between two points
+double distance(double *point1, double *point2, int dim) {
+    return sqrt(compute_squared_distance(point1, point2, dim));
+}
+
+// Error knob 2: Find nearest centroid (loop perforation on centroids)
+int find_nearest_centroid(double *point, double **centroids, int dim, int k) {
+    double min_dist = DBL_MAX;
+    int best_cluster = 0;
+    
+    for (int c = 0; c < k; c++) {
+        double dist = compute_squared_distance(point, centroids[c], dim);
+        
+        if (dist < min_dist) {
+            min_dist = dist;
+            best_cluster = c;
+        }
+    }
+    
+    return best_cluster;
+}
+
+// Error knob 3: Accumulate point to centroid sum (loop perforation on dimensions)
+void accumulate_point_to_centroid(double *point, double *centroid_sum, int dim) {
+    for (int j = 0; j < dim; j++) {
+        centroid_sum[j] += point[j];
+    }
+}
+
+// Error knob 4: Assign all points to clusters (loop perforation on points)
+void assign_points_to_clusters(double **points, double **centroids, int *assignments,
+                               int *cluster_sizes, double **new_centroids,
+                               int num_points, int dim, int k) {
+    for (int i = 0; i < num_points; i++) {
+        int best_cluster = find_nearest_centroid(points[i], centroids, dim, k);
+        
+        // Assign point to cluster
+        assignments[i] = best_cluster;
+        cluster_sizes[best_cluster]++;
+        
+        // Update sum for centroid calculation
+        accumulate_point_to_centroid(points[i], new_centroids[best_cluster], dim);
+    }
+}
+
+// Error knob 5: Update single centroid (loop perforation on dimensions)
+void update_single_centroid(double *centroid, double *new_centroid, int cluster_size, int dim) {
+    for (int j = 0; j < dim; j++) {
+        centroid[j] = new_centroid[j] / cluster_size;
+    }
+}
+
+// Error knob 6: Update all centroids (loop perforation on centroids)
+void update_centroids(double **centroids, double **new_centroids, 
+                     int *cluster_sizes, int k, int dim) {
+    for (int c = 0; c < k; c++) {
+        if (cluster_sizes[c] > 0) {
+            update_single_centroid(centroids[c], new_centroids[c], cluster_sizes[c], dim);
+        }
+    }
+}
+
+// Error knob 7: Reset centroid sums for single centroid (loop perforation on dimensions)
+void reset_single_centroid(double *new_centroid, int dim) {
+    for (int j = 0; j < dim; j++) {
+        new_centroid[j] = 0.0;
+    }
+}
+
+// Error knob 8: Reset all centroid sums (loop perforation on centroids)
+void reset_centroid_sums(double **new_centroids, int *cluster_sizes, int k, int dim) {
+    for (int c = 0; c < k; c++) {
+        cluster_sizes[c] = 0;
+        reset_single_centroid(new_centroids[c], dim);
+    }
+}
+
+// Error knob 9: Single k-means iteration (function substitution)
+void kmeans_iteration(double **points, double **centroids, int *assignments,
+                     int *cluster_sizes, double **new_centroids,
+                     int num_points, int dim, int k) {
+    // Reset new centroids and cluster sizes
+    reset_centroid_sums(new_centroids, cluster_sizes, k, dim);
+    
+    // Assign points to nearest centroid
+    assign_points_to_clusters(points, centroids, assignments, cluster_sizes, 
+                             new_centroids, num_points, dim, k);
+    
+    // Calculate new centroids
+    update_centroids(centroids, new_centroids, cluster_sizes, k, dim);
+}
+
+// Approximate version of kmeans_iteration (skips reset on even iterations)
+void approx_kmeans_iteration(double **points, double **centroids, int *assignments,
+                            int *cluster_sizes, double **new_centroids,
+                            int num_points, int dim, int k) {
+    static int iter_count = 0;
+    
+    // Only reset on odd iterations (skip half the resets)
+    if (iter_count % 2 == 1) {
+        reset_centroid_sums(new_centroids, cluster_sizes, k, dim);
+    }
+    iter_count++;
+    
+    // Assign points to nearest centroid
+    assign_points_to_clusters(points, centroids, assignments, cluster_sizes, 
+                             new_centroids, num_points, dim, k);
+    
+    // Calculate new centroids
+    update_centroids(centroids, new_centroids, cluster_sizes, k, dim);
+}
+
+// Error knob 10: Main iteration loop (loop perforation to skip iterations)
+void kmeans_main_loop(double **points, double **centroids, int *assignments,
+                     int *cluster_sizes, double **new_centroids,
+                     int num_points, int dim, int k, int max_iters) {
+    for (int iter = 0; iter < max_iters; iter++) {
+        kmeans_iteration(points, centroids, assignments, cluster_sizes, 
+                        new_centroids, num_points, dim, k);
+    }
 }
 
 // K-means clustering kernel
-// points: array of data points [num_points x dim]
-// centroids: array of centroids [k x dim]
-// assignments: output array of cluster assignments [num_points]
-// num_points: number of data points
-// dim: dimensionality of the data
-// k: number of clusters
-// max_iters: maximum number of iterations
 void kmeans_kernel(double **points, double **centroids, int *assignments, 
                   int num_points, int dim, int k, int max_iters) {
-    int i, j, c, iter;
     int *cluster_sizes = (int *)malloc(k * sizeof(int));
     double **new_centroids = (double **)malloc(k * sizeof(double *));
     
-    for (c = 0; c < k; c++) {
+    for (int c = 0; c < k; c++) {
         new_centroids[c] = (double *)malloc(dim * sizeof(double));
     }
     
     // Main k-means loop
-    for (iter = 0; iter < max_iters; iter++) {
-        // Reset new centroids and cluster sizes
-        for (c = 0; c < k; c++) {
-            cluster_sizes[c] = 0;
-            for (j = 0; j < dim; j++) {
-                new_centroids[c][j] = 0.0;
-            }
-        }
-        
-        // Assign points to nearest centroid
-        for (i = 0; i < num_points; i++) {
-            double min_dist = DBL_MAX;
-            int best_cluster = 0;
-            
-            for (c = 0; c < k; c++) {
-                double dist = 0.0;
-                for (j = 0; j < dim; j++) {
-                    double diff = points[i][j] - centroids[c][j];
-                    dist += diff * diff;
-                }
-                
-                if (dist < min_dist) {
-                    min_dist = dist;
-                    best_cluster = c;
-                }
-            }
-            
-            // Assign point to cluster
-            assignments[i] = best_cluster;
-            cluster_sizes[best_cluster]++;
-            
-            // Update sum for centroid calculation
-            for (j = 0; j < dim; j++) {
-                new_centroids[best_cluster][j] += points[i][j];
-            }
-        }
-        
-        // Calculate new centroids
-        for (c = 0; c < k; c++) {
-            if (cluster_sizes[c] > 0) {
-                for (j = 0; j < dim; j++) {
-                    centroids[c][j] = new_centroids[c][j] / cluster_sizes[c];
-                }
-            }
-        }
-    }
+    kmeans_main_loop(points, centroids, assignments, cluster_sizes, 
+                    new_centroids, num_points, dim, k, max_iters);
     
     // Free memory
-    for (c = 0; c < k; c++) {
+    for (int c = 0; c < k; c++) {
         free(new_centroids[c]);
     }
     free(new_centroids);
@@ -182,7 +252,7 @@ int main(int argc, char **argv) {
             max_iters = atoi(argv[i+1]);
             i++;
         } else if (strcmp(argv[i], "-h") == 0) {
-            printf("Usage: %s [-n num_points] [-d dimensions] [-k clusters] [-i max_iterations] [-p]\n", argv[0]);
+            printf("Usage: %s [-n num_points] [-d dimensions] [-k clusters] [-i max_iterations]\n", argv[0]);
             printf("  -n num_points    : Number of data points (default: 1000)\n");
             printf("  -d dimensions    : Dimensionality of data (default: 2)\n");
             printf("  -k clusters      : Number of clusters (default: 5)\n");
