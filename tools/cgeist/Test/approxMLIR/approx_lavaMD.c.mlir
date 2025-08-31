@@ -1,4 +1,4 @@
-module attributes {dlti.dl_spec = #dlti.dl_spec<#dlti.dl_entry<f128, dense<128> : vector<2xi32>>, #dlti.dl_entry<f64, dense<64> : vector<2xi32>>, #dlti.dl_entry<!llvm.ptr<270>, dense<32> : vector<4xi32>>, #dlti.dl_entry<i32, dense<32> : vector<2xi32>>, #dlti.dl_entry<f16, dense<16> : vector<2xi32>>, #dlti.dl_entry<i16, dense<16> : vector<2xi32>>, #dlti.dl_entry<i1, dense<8> : vector<2xi32>>, #dlti.dl_entry<i8, dense<8> : vector<2xi32>>, #dlti.dl_entry<!llvm.ptr, dense<64> : vector<4xi32>>, #dlti.dl_entry<f80, dense<128> : vector<2xi32>>, #dlti.dl_entry<i64, dense<64> : vector<2xi32>>, #dlti.dl_entry<!llvm.ptr<271>, dense<32> : vector<4xi32>>, #dlti.dl_entry<!llvm.ptr<272>, dense<64> : vector<4xi32>>, #dlti.dl_entry<"dlti.endianness", "little">, #dlti.dl_entry<"dlti.stack_alignment", 128 : i32>>, llvm.data_layout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128", llvm.target_triple = "x86_64-unknown-linux-gnu", "polygeist.target-cpu" = "x86-64", "polygeist.target-features" = "+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87", "polygeist.tune-cpu" = "generic"} {
+module attributes {dlti.dl_spec = #dlti.dl_spec<#dlti.dl_entry<f80, dense<128> : vector<2xi32>>, #dlti.dl_entry<i64, dense<64> : vector<2xi32>>, #dlti.dl_entry<i1, dense<8> : vector<2xi32>>, #dlti.dl_entry<i8, dense<8> : vector<2xi32>>, #dlti.dl_entry<!llvm.ptr, dense<64> : vector<4xi32>>, #dlti.dl_entry<i32, dense<32> : vector<2xi32>>, #dlti.dl_entry<f16, dense<16> : vector<2xi32>>, #dlti.dl_entry<i16, dense<16> : vector<2xi32>>, #dlti.dl_entry<!llvm.ptr<270>, dense<32> : vector<4xi32>>, #dlti.dl_entry<f64, dense<64> : vector<2xi32>>, #dlti.dl_entry<!llvm.ptr<272>, dense<64> : vector<4xi32>>, #dlti.dl_entry<f128, dense<128> : vector<2xi32>>, #dlti.dl_entry<!llvm.ptr<271>, dense<32> : vector<4xi32>>, #dlti.dl_entry<"dlti.stack_alignment", 128 : i32>, #dlti.dl_entry<"dlti.endianness", "little">>, llvm.data_layout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128", llvm.target_triple = "x86_64-unknown-linux-gnu", "polygeist.target-cpu" = "x86-64", "polygeist.target-features" = "+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87", "polygeist.tune-cpu" = "generic"} {
   llvm.mlir.global internal constant @str13("ERROR: open result.txt\0A\00") {addr_space = 0 : i32}
   llvm.mlir.global internal constant @str12("Results written to result.txt\0A\00") {addr_space = 0 : i32}
   llvm.mlir.global internal constant @str11("ERROR: data write\0A\00") {addr_space = 0 : i32}
@@ -14,6 +14,147 @@ module attributes {dlti.dl_spec = #dlti.dl_spec<#dlti.dl_entry<f128, dense<128> 
   llvm.mlir.global internal constant @str1("-boxes1d\00") {addr_space = 0 : i32}
   llvm.mlir.global internal constant @str0("WG size of kernel = %d\0A\00") {addr_space = 0 : i32}
   llvm.func @printf(!llvm.ptr, ...) -> i32
+  func.func @pair_interaction(%arg0: i32, %arg1: i32, %arg2: f64, %arg3: memref<?x4xf64>, %arg4: memref<?xf64>, %arg5: memref<?x4xf64>, %arg6: i32) -> i32 attributes {llvm.linkage = #llvm.linkage<external>} {
+    %cst = arith.constant 2.000000e+00 : f64
+    %cst_0 = arith.constant 0.000000e+00 : f64
+    %0 = arith.index_cast %arg0 : i32 to index
+    %1 = affine.load %arg3[symbol(%0), 0] : memref<?x4xf64>
+    %2 = arith.index_cast %arg1 : i32 to index
+    %3 = affine.load %arg3[symbol(%2), 0] : memref<?x4xf64>
+    %4 = arith.addf %1, %3 : f64
+    %5 = affine.load %arg3[symbol(%0), 1] : memref<?x4xf64>
+    %6 = affine.load %arg3[symbol(%2), 1] : memref<?x4xf64>
+    %7 = arith.mulf %5, %6 : f64
+    %8 = affine.load %arg3[symbol(%0), 2] : memref<?x4xf64>
+    %9 = affine.load %arg3[symbol(%2), 2] : memref<?x4xf64>
+    %10 = arith.mulf %8, %9 : f64
+    %11 = arith.addf %7, %10 : f64
+    %12 = affine.load %arg3[symbol(%0), 3] : memref<?x4xf64>
+    %13 = affine.load %arg3[symbol(%2), 3] : memref<?x4xf64>
+    %14 = arith.mulf %12, %13 : f64
+    %15 = arith.addf %11, %14 : f64
+    %16 = arith.subf %4, %15 : f64
+    %17 = arith.cmpf olt, %16, %cst_0 : f64
+    %18 = arith.select %17, %cst_0, %16 : f64
+    %19 = arith.mulf %arg2, %18 : f64
+    %20 = arith.negf %19 : f64
+    %21 = math.exp %20 : f64
+    %22 = arith.mulf %21, %cst : f64
+    %23 = arith.index_cast %arg0 : i32 to index
+    %24 = affine.load %arg3[symbol(%23), 1] : memref<?x4xf64>
+    %25 = arith.index_cast %arg1 : i32 to index
+    %26 = affine.load %arg3[symbol(%25), 1] : memref<?x4xf64>
+    %27 = arith.subf %24, %26 : f64
+    %28 = arith.index_cast %arg0 : i32 to index
+    %29 = affine.load %arg3[symbol(%28), 2] : memref<?x4xf64>
+    %30 = arith.index_cast %arg1 : i32 to index
+    %31 = affine.load %arg3[symbol(%30), 2] : memref<?x4xf64>
+    %32 = arith.subf %29, %31 : f64
+    %33 = arith.index_cast %arg0 : i32 to index
+    %34 = affine.load %arg3[symbol(%33), 3] : memref<?x4xf64>
+    %35 = arith.index_cast %arg1 : i32 to index
+    %36 = affine.load %arg3[symbol(%35), 3] : memref<?x4xf64>
+    %37 = arith.subf %34, %36 : f64
+    %38 = arith.index_cast %arg1 : i32 to index
+    %39 = affine.load %arg4[symbol(%38)] : memref<?xf64>
+    %40 = arith.mulf %39, %21 : f64
+    %41 = affine.load %arg5[0, 0] : memref<?x4xf64>
+    %42 = arith.addf %41, %40 : f64
+    affine.store %42, %arg5[0, 0] : memref<?x4xf64>
+    %43 = arith.index_cast %arg1 : i32 to index
+    %44 = affine.load %arg4[symbol(%43)] : memref<?xf64>
+    %45 = arith.mulf %22, %27 : f64
+    %46 = arith.mulf %44, %45 : f64
+    %47 = affine.load %arg5[0, 1] : memref<?x4xf64>
+    %48 = arith.addf %47, %46 : f64
+    affine.store %48, %arg5[0, 1] : memref<?x4xf64>
+    %49 = arith.index_cast %arg1 : i32 to index
+    %50 = affine.load %arg4[symbol(%49)] : memref<?xf64>
+    %51 = arith.mulf %22, %32 : f64
+    %52 = arith.mulf %50, %51 : f64
+    %53 = affine.load %arg5[0, 2] : memref<?x4xf64>
+    %54 = arith.addf %53, %52 : f64
+    affine.store %54, %arg5[0, 2] : memref<?x4xf64>
+    %55 = arith.index_cast %arg1 : i32 to index
+    %56 = affine.load %arg4[symbol(%55)] : memref<?xf64>
+    %57 = arith.mulf %22, %37 : f64
+    %58 = arith.mulf %56, %57 : f64
+    %59 = affine.load %arg5[0, 3] : memref<?x4xf64>
+    %60 = arith.addf %59, %58 : f64
+    affine.store %60, %arg5[0, 3] : memref<?x4xf64>
+    return %arg6 : i32
+  }
+  func.func @approx_pair_interaction(%arg0: i32, %arg1: i32, %arg2: f64, %arg3: memref<?x4xf64>, %arg4: memref<?xf64>, %arg5: memref<?x4xf64>, %arg6: i32) -> i32 attributes {llvm.linkage = #llvm.linkage<external>} {
+    %cst = arith.constant 2.000000e+00 : f64
+    %cst_0 = arith.constant 1.000000e+00 : f64
+    %cst_1 = arith.constant 0.000000e+00 : f64
+    %0 = arith.index_cast %arg0 : i32 to index
+    %1 = affine.load %arg3[symbol(%0), 0] : memref<?x4xf64>
+    %2 = arith.index_cast %arg1 : i32 to index
+    %3 = affine.load %arg3[symbol(%2), 0] : memref<?x4xf64>
+    %4 = arith.addf %1, %3 : f64
+    %5 = affine.load %arg3[symbol(%0), 1] : memref<?x4xf64>
+    %6 = affine.load %arg3[symbol(%2), 1] : memref<?x4xf64>
+    %7 = arith.mulf %5, %6 : f64
+    %8 = affine.load %arg3[symbol(%0), 2] : memref<?x4xf64>
+    %9 = affine.load %arg3[symbol(%2), 2] : memref<?x4xf64>
+    %10 = arith.mulf %8, %9 : f64
+    %11 = arith.addf %7, %10 : f64
+    %12 = affine.load %arg3[symbol(%0), 3] : memref<?x4xf64>
+    %13 = affine.load %arg3[symbol(%2), 3] : memref<?x4xf64>
+    %14 = arith.mulf %12, %13 : f64
+    %15 = arith.addf %11, %14 : f64
+    %16 = arith.subf %4, %15 : f64
+    %17 = arith.cmpf olt, %16, %cst_1 : f64
+    %18 = arith.select %17, %cst_1, %16 : f64
+    %19 = arith.mulf %arg2, %18 : f64
+    %20 = arith.addf %19, %cst_0 : f64
+    %21 = arith.divf %cst_0, %20 : f64
+    %22 = arith.mulf %21, %cst : f64
+    %23 = arith.index_cast %arg0 : i32 to index
+    %24 = affine.load %arg3[symbol(%23), 1] : memref<?x4xf64>
+    %25 = arith.index_cast %arg1 : i32 to index
+    %26 = affine.load %arg3[symbol(%25), 1] : memref<?x4xf64>
+    %27 = arith.subf %24, %26 : f64
+    %28 = arith.index_cast %arg0 : i32 to index
+    %29 = affine.load %arg3[symbol(%28), 2] : memref<?x4xf64>
+    %30 = arith.index_cast %arg1 : i32 to index
+    %31 = affine.load %arg3[symbol(%30), 2] : memref<?x4xf64>
+    %32 = arith.subf %29, %31 : f64
+    %33 = arith.index_cast %arg0 : i32 to index
+    %34 = affine.load %arg3[symbol(%33), 3] : memref<?x4xf64>
+    %35 = arith.index_cast %arg1 : i32 to index
+    %36 = affine.load %arg3[symbol(%35), 3] : memref<?x4xf64>
+    %37 = arith.subf %34, %36 : f64
+    %38 = arith.index_cast %arg1 : i32 to index
+    %39 = affine.load %arg4[symbol(%38)] : memref<?xf64>
+    %40 = arith.mulf %39, %21 : f64
+    %41 = affine.load %arg5[0, 0] : memref<?x4xf64>
+    %42 = arith.addf %41, %40 : f64
+    affine.store %42, %arg5[0, 0] : memref<?x4xf64>
+    %43 = arith.index_cast %arg1 : i32 to index
+    %44 = affine.load %arg4[symbol(%43)] : memref<?xf64>
+    %45 = arith.mulf %22, %27 : f64
+    %46 = arith.mulf %44, %45 : f64
+    %47 = affine.load %arg5[0, 1] : memref<?x4xf64>
+    %48 = arith.addf %47, %46 : f64
+    affine.store %48, %arg5[0, 1] : memref<?x4xf64>
+    %49 = arith.index_cast %arg1 : i32 to index
+    %50 = affine.load %arg4[symbol(%49)] : memref<?xf64>
+    %51 = arith.mulf %22, %32 : f64
+    %52 = arith.mulf %50, %51 : f64
+    %53 = affine.load %arg5[0, 2] : memref<?x4xf64>
+    %54 = arith.addf %53, %52 : f64
+    affine.store %54, %arg5[0, 2] : memref<?x4xf64>
+    %55 = arith.index_cast %arg1 : i32 to index
+    %56 = affine.load %arg4[symbol(%55)] : memref<?xf64>
+    %57 = arith.mulf %22, %37 : f64
+    %58 = arith.mulf %56, %57 : f64
+    %59 = affine.load %arg5[0, 3] : memref<?x4xf64>
+    %60 = arith.addf %59, %58 : f64
+    affine.store %60, %arg5[0, 3] : memref<?x4xf64>
+    return %arg6 : i32
+  }
   func.func @main(%arg0: i32, %arg1: memref<?xmemref<?xi8>>) -> i32 attributes {llvm.linkage = #llvm.linkage<external>} {
     %c-1 = arith.constant -1 : index
     %true = arith.constant true
@@ -626,7 +767,7 @@ module attributes {dlti.dl_spec = #dlti.dl_spec<#dlti.dl_entry<f128, dense<128> 
         %21 = arith.select %20, %cst, %19 : f64
         %22 = arith.mulf %arg2, %21 : f64
         %23 = func.call @state_pair_from_u2(%22) : (f64) -> i32
-        func.call @pair_interaction(%arg0, %2, %arg2, %arg3, %arg4, %arg5, %23) : (i32, i32, f64, memref<?x4xf64>, memref<?xf64>, memref<?x4xf64>, i32) -> ()
+        %24 = func.call @pair_interaction(%arg0, %2, %arg2, %arg3, %arg4, %arg5, %23) : (i32, i32, f64, memref<?x4xf64>, memref<?xf64>, memref<?x4xf64>, i32) -> i32
       }
     }
     return
@@ -692,7 +833,7 @@ module attributes {dlti.dl_spec = #dlti.dl_spec<#dlti.dl_entry<f128, dense<128> 
         %42 = arith.select %41, %cst, %40 : f64
         %43 = arith.mulf %arg2, %42 : f64
         %44 = func.call @state_pair_from_u2(%43) : (f64) -> i32
-        func.call @pair_interaction(%arg0, %24, %arg2, %arg4, %arg5, %arg6, %44) : (i32, i32, f64, memref<?x4xf64>, memref<?xf64>, memref<?x4xf64>, i32) -> ()
+        %45 = func.call @pair_interaction(%arg0, %24, %arg2, %arg4, %arg5, %arg6, %44) : (i32, i32, f64, memref<?x4xf64>, memref<?xf64>, memref<?x4xf64>, i32) -> i32
       }
       %22 = arith.addi %arg8, %c1_i32 : i32
       scf.yield %22 : i32
@@ -709,59 +850,5 @@ module attributes {dlti.dl_spec = #dlti.dl_spec<#dlti.dl_entry<f128, dense<128> 
     %3 = arith.addf %2, %cst : f64
     %4 = arith.fptosi %3 : f64 to i32
     return %4 : i32
-  }
-  func.func private @pair_interaction(%arg0: i32, %arg1: i32, %arg2: f64, %arg3: memref<?x4xf64>, %arg4: memref<?xf64>, %arg5: memref<?x4xf64>, %arg6: i32) attributes {llvm.linkage = #llvm.linkage<internal>} {
-    %cst = arith.constant 2.000000e+00 : f64
-    %cst_0 = arith.constant 0.000000e+00 : f64
-    %0 = arith.index_cast %arg0 : i32 to index
-    %1 = affine.load %arg3[symbol(%0), 0] : memref<?x4xf64>
-    %2 = arith.index_cast %arg1 : i32 to index
-    %3 = affine.load %arg3[symbol(%2), 0] : memref<?x4xf64>
-    %4 = arith.addf %1, %3 : f64
-    %5 = affine.load %arg3[symbol(%0), 1] : memref<?x4xf64>
-    %6 = affine.load %arg3[symbol(%2), 1] : memref<?x4xf64>
-    %7 = arith.mulf %5, %6 : f64
-    %8 = affine.load %arg3[symbol(%0), 2] : memref<?x4xf64>
-    %9 = affine.load %arg3[symbol(%2), 2] : memref<?x4xf64>
-    %10 = arith.mulf %8, %9 : f64
-    %11 = arith.addf %7, %10 : f64
-    %12 = affine.load %arg3[symbol(%0), 3] : memref<?x4xf64>
-    %13 = affine.load %arg3[symbol(%2), 3] : memref<?x4xf64>
-    %14 = arith.mulf %12, %13 : f64
-    %15 = arith.addf %11, %14 : f64
-    %16 = arith.subf %4, %15 : f64
-    %17 = arith.cmpf olt, %16, %cst_0 : f64
-    %18 = arith.select %17, %cst_0, %16 : f64
-    %19 = arith.mulf %arg2, %18 : f64
-    %20 = arith.negf %19 : f64
-    %21 = math.exp %20 : f64
-    %22 = arith.mulf %21, %cst : f64
-    %23 = arith.subf %5, %6 : f64
-    %24 = arith.subf %8, %9 : f64
-    %25 = arith.subf %12, %13 : f64
-    %26 = affine.load %arg4[symbol(%2)] : memref<?xf64>
-    %27 = arith.mulf %26, %21 : f64
-    %28 = affine.load %arg5[0, 0] : memref<?x4xf64>
-    %29 = arith.addf %28, %27 : f64
-    affine.store %29, %arg5[0, 0] : memref<?x4xf64>
-    %30 = affine.load %arg4[symbol(%2)] : memref<?xf64>
-    %31 = arith.mulf %22, %23 : f64
-    %32 = arith.mulf %30, %31 : f64
-    %33 = affine.load %arg5[0, 1] : memref<?x4xf64>
-    %34 = arith.addf %33, %32 : f64
-    affine.store %34, %arg5[0, 1] : memref<?x4xf64>
-    %35 = affine.load %arg4[symbol(%2)] : memref<?xf64>
-    %36 = arith.mulf %22, %24 : f64
-    %37 = arith.mulf %35, %36 : f64
-    %38 = affine.load %arg5[0, 2] : memref<?x4xf64>
-    %39 = arith.addf %38, %37 : f64
-    affine.store %39, %arg5[0, 2] : memref<?x4xf64>
-    %40 = affine.load %arg4[symbol(%2)] : memref<?xf64>
-    %41 = arith.mulf %22, %25 : f64
-    %42 = arith.mulf %40, %41 : f64
-    %43 = affine.load %arg5[0, 3] : memref<?x4xf64>
-    %44 = arith.addf %43, %42 : f64
-    affine.store %44, %arg5[0, 3] : memref<?x4xf64>
-    return
   }
 }

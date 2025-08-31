@@ -121,7 +121,30 @@ static inline int state_neigh_from_nn(int nn){
 }
 
 // -------------------- pair interaction (func_substitute knob) --------------------
-static void approx_pair_interaction(int pi, int pj, fp a2,
+
+
+int pair_interaction(int pi, int pj, fp a2,
+                             FOUR_VECTOR* rv, fp* qv,
+                             FOUR_VECTOR* fv_particle, int state){
+    fp r2 = rv[pi].v + rv[pj].v - DOT(rv[pi], rv[pj]);
+    if (r2 < (fp)0) r2 = (fp)0;
+    fp u2  = a2 * r2;
+    fp vij = (fp)exp(-u2);
+    fp fs  = (fp)2.0 * vij;
+
+    THREE_VECTOR d;
+    d.x = rv[pi].x - rv[pj].x;
+    d.y = rv[pi].y - rv[pj].y;
+    d.z = rv[pi].z - rv[pj].z;
+
+    fv_particle->v += qv[pj] * vij;
+    fv_particle->x += qv[pj] * (fs * d.x);
+    fv_particle->y += qv[pj] * (fs * d.y);
+    fv_particle->z += qv[pj] * (fs * d.z);
+    return state; // not used in callee
+}
+
+int approx_pair_interaction(int pi, int pj, fp a2,
                                     FOUR_VECTOR* rv, fp* qv,
                                     FOUR_VECTOR* fv_particle, int state){
     // exp(-u²) ≈ 1/(1+u²)
@@ -140,28 +163,7 @@ static void approx_pair_interaction(int pi, int pj, fp a2,
     fv_particle->x += qv[pj] * (fs * d.x);
     fv_particle->y += qv[pj] * (fs * d.y);
     fv_particle->z += qv[pj] * (fs * d.z);
-    (void)state; // not used in callee
-}
-
-static void pair_interaction(int pi, int pj, fp a2,
-                             FOUR_VECTOR* rv, fp* qv,
-                             FOUR_VECTOR* fv_particle, int state){
-    fp r2 = rv[pi].v + rv[pj].v - DOT(rv[pi], rv[pj]);
-    if (r2 < (fp)0) r2 = (fp)0;
-    fp u2  = a2 * r2;
-    fp vij = (fp)exp(-u2);
-    fp fs  = (fp)2.0 * vij;
-
-    THREE_VECTOR d;
-    d.x = rv[pi].x - rv[pj].x;
-    d.y = rv[pi].y - rv[pj].y;
-    d.z = rv[pi].z - rv[pj].z;
-
-    fv_particle->v += qv[pj] * vij;
-    fv_particle->x += qv[pj] * (fs * d.x);
-    fv_particle->y += qv[pj] * (fs * d.y);
-    fv_particle->z += qv[pj] * (fs * d.z);
-    (void)state; // not used in callee
+    return state; // not used in callee
 }
 
 // -------------------- self-box accumulate (loop_perforate knob) --------------------
