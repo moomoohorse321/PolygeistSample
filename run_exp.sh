@@ -1,7 +1,7 @@
 # cd to build
 BENCH=$1 # e.g. bm25
 ROOT=${2:-/home/hao/Polygeist} # e.g. /home/hao/Polygeist
-${ROOT}/llvm-project/build/bin/llvm-lit ${ROOT}/build/tools/cgeist/Test/approxMLIR/approx_${BENCH}.c
+${ROOT}/build/bin/cgeist -resource-dir=${ROOT}/llvm-project/build/lib/clang/18 -I ${ROOT}/tools/cgeist/Test/polybench/utilities ${ROOT}/build/tools/cgeist/Test/approxMLIR/approx_${BENCH}.c
 bash ${ROOT}/tools/cgeist/Test/approxMLIR/merge.bash ${BENCH} # depend on existence of ${ROOT}/build/tools/cgeist/Test/approxMLIR/approx_${BENCH}.c.mlir, ${ROOT}/build/tools/cgeist/Test/approxMLIR/${BENCH}/annotation.mlir
 # auto-tuner config (use your regex to configure all the annotations)
 ${ROOT}/build/bin/polygeist-opt ${ROOT}//tools/cgeist/Test/approxMLIR/approx_${BENCH}.mlir -pre-emit-transform -emit-approx -config-approx -transform-approx > test.mlir
