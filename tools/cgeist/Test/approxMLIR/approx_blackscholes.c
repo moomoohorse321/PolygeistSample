@@ -41,6 +41,8 @@
 #include <string.h>
 #include <time.h>
 
+int knob[2];
+
 #define TYPE_DOUBLE 0
 #define TYPE_FLOAT  1
 #define TYPE_INT    2
@@ -180,6 +182,7 @@ fptype compute_cndf(fptype x, int state) {
 
 // approximate CNDF (fewer terms)
 fptype approx_compute_cndf(fptype x, int state) {
+    knob[0]++;
     int sign = 0;
     if (x < zero) { x = -x; sign = 1; }
     fptype nprime = exp(-half * x * x) * inv_sqrt_2xPI;
@@ -193,6 +196,7 @@ fptype approx_compute_cndf(fptype x, int state) {
 // Approximate Black-Scholes pricing: faster but less accurate
 fptype approx_BlkSchlsEqEuroNoDiv(fptype s, fptype K, fptype r,
                                   fptype v, fptype t, int state) {
+    knob[1]++;
     // Approx sqrt is okay
     fptype sqrtT = sqrt(t);
 
@@ -348,6 +352,39 @@ int main(int argc, char **argv){
 
     // Text output (via task-skipping wrapper)
     {
+        printf("\n--- Black-Scholes Results ---\n");
+        printf("Number of options: %zu\n", numOptions);
+
+        if (numOptions > 0) {
+            fptype min_price = prices[0];
+            fptype max_price = prices[0];
+            fptype sum_prices = 0.0;
+
+            for (size_t i = 0; i < numOptions; ++i) {
+                if (prices[i] < min_price) min_price = prices[i];
+                if (prices[i] > max_price) max_price = prices[i];
+                sum_prices += prices[i];
+            }
+            
+            printf("\n--- Price Statistics ---\n");
+            printf("  Average Price: %12.6f\n", sum_prices / numOptions);
+            printf("      Min Price: %12.6f\n", min_price);
+            printf("      Max Price: %12.6f\n", max_price);
+        }
+        
+        printf("\n--- First 20 Option Prices ---\n");
+        printf("  # |       S       |       K       |     Rate      |      Vol      |     Time      |    Price\n");
+        printf("----|---------------|---------------|---------------|---------------|---------------|--------------\n");
+        size_t limit = (numOptions < 20) ? numOptions : 20;
+        for (size_t i = 0; i < limit; ++i) {
+            printf("%3zu | %13.6f | %13.6f | %13.6f | %13.6f | %13.6f | %12.6f\n",
+                i, sptprice[i], strike[i], rate[i], volatility[i], otime[i], prices[i]);
+        }
+        for(int i = 0; i < 2; i++)
+            printf("knob[%d] = %d\n", i, knob[i]);
+        printf("------------------------------------------------------------------------------------------------\n");
+    }
+    {
         size_t len = strlen(outputFile);
         char *txtPath = (char*)malloc(len + 5); // ".txt" + NUL
         if (!txtPath) die("alloc txtPath failed");
@@ -358,6 +395,7 @@ int main(int argc, char **argv){
                          prices, numOptions);
         free(txtPath);
     }
+
 
     // Cleanup
     free(sptprice);

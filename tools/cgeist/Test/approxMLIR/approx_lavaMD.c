@@ -313,7 +313,51 @@ int main(int argc, char *argv[]) {
     long long t1=get_time();
     printf("Total execution time: %f seconds\n", (double)(t1-t0)/1e6);
 
-    // write results
+    printf("\n--- Simulation Statistics ---\n");
+    printf("Total Particles: %ld\n", dim_cpu.space_elem);
+    printf("Number of Boxes: %ld\n", dim_cpu.number_boxes);
+    printf("Particles per Box: %d\n", NUMBER_PAR_PER_BOX);
+
+    fp v_sum = 0.0, x_sum = 0.0, y_sum = 0.0, z_sum = 0.0;
+    fp v_max = -8888888888.0, x_max = -8888888888.0, y_max = -8888888888.0, z_max = -8888888888.0;
+    fp v_min = 8888888888.0,  x_min = 8888888888.0,  y_min = 8888888888.0,  z_min = 8888888888.0;
+
+    for (size_t i = 0; i < (size_t)dim_cpu.space_elem; i++) {
+        v_sum += fv_cpu[i].v;
+        x_sum += fv_cpu[i].x;
+        y_sum += fv_cpu[i].y;
+        z_sum += fv_cpu[i].z;
+
+        if (fv_cpu[i].v > v_max) v_max = fv_cpu[i].v;
+        if (fv_cpu[i].x > x_max) x_max = fv_cpu[i].x;
+        if (fv_cpu[i].y > y_max) y_max = fv_cpu[i].y;
+        if (fv_cpu[i].z > z_max) z_max = fv_cpu[i].z;
+        
+        if (fv_cpu[i].v < v_min) v_min = fv_cpu[i].v;
+        if (fv_cpu[i].x < x_min) x_min = fv_cpu[i].x;
+        if (fv_cpu[i].y < y_min) y_min = fv_cpu[i].y;
+        if (fv_cpu[i].z < z_min) z_min = fv_cpu[i].z;
+    }
+
+    printf("\n--- Result Summary (fv_cpu) ---\n");
+    printf("        Component |      Average |          Min |          Max\n");
+    printf("------------------|--------------|--------------|--------------\n");
+    printf("Potential Energy (v) | %12.6f | %12.6f | %12.6f\n", v_sum / dim_cpu.space_elem, v_min, v_max);
+    printf("      Force Vector (x) | %12.6f | %12.6f | %12.6f\n", x_sum / dim_cpu.space_elem, x_min, x_max);
+    printf("      Force Vector (y) | %12.6f | %12.6f | %12.6f\n", y_sum / dim_cpu.space_elem, y_min, y_max);
+    printf("      Force Vector (z) | %12.6f | %12.6f | %12.6f\n", z_sum / dim_cpu.space_elem, z_min, z_max);
+
+
+    // Print the full results to stdout instead of writing to a file
+    printf("\n--- Full Particle Data Dump (fv_cpu) ---\n");
+    printf("Particle Index | Potential (v) |   Force (x) |   Force (y) |   Force (z)\n");
+    printf("---------------|---------------|-------------|-------------|-------------\n");
+    for (size_t i = 0; i < (size_t)dim_cpu.space_elem; i++) {
+        printf("%14zu | %13.6f | %11.6f | %11.6f | %11.6f\n",
+               i, fv_cpu[i].v, fv_cpu[i].x, fv_cpu[i].y, fv_cpu[i].z);
+    }
+
+        // write results
     FILE* fp_out = fopen("result.txt","wb");
     if (fp_out){
       size_t wrote = fwrite(&dim_cpu.space_elem, sizeof(dim_cpu.space_elem), 1, fp_out);
@@ -323,6 +367,7 @@ int main(int argc, char *argv[]) {
       fclose(fp_out);
       printf("Results written to result.txt\n");
     } else { printf("ERROR: open result.txt\n"); }
+
 
     free(rv_cpu); free(qv_cpu); free(fv_cpu); free(box_cpu);
     return 0;

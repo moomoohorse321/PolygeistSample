@@ -60,6 +60,19 @@ typedef struct {
     int iters;
 } WorkerArgs;
 
+typedef struct {
+    int id;
+    double rank;
+} PageRankEntry;
+
+static int compare_pagerank(const void *a, const void *b) {
+    double rank_a = ((const PageRankEntry*)a)->rank;
+    double rank_b = ((const PageRankEntry*)b)->rank;
+    if (rank_a < rank_b) return 1;
+    if (rank_a > rank_b) return -1;
+    return 0;
+}
+
 static void die(const char *msg) {
     perror(msg);
     exit(EXIT_FAILURE);
@@ -458,10 +471,44 @@ int main(int argc, char **argv) {
     printf("Time: %.6f seconds\n", t1 - t0);
 
     if (do_print) {
+        PageRankEntry* ranked_pages = (PageRankEntry*)xmalloc((size_t)G.N * sizeof(PageRankEntry));
+        double sum_ranks = 0.0;
+        double min_rank = 1.0, max_rank = 0.0;
+        
+        for (int v = 0; v < G.N; v++) {
+            ranked_pages[v].id = v;
+            ranked_pages[v].rank = pr[v];
+            sum_ranks += pr[v];
+            if (pr[v] < min_rank) min_rank = pr[v];
+            if (pr[v] > max_rank) max_rank = pr[v];
+            
+        }
+
+        qsort(ranked_pages, (size_t)G.N, sizeof(PageRankEntry), compare_pagerank);
+
+        printf("\n--- PageRank Statistics ---\n");
+        printf("  Total Nodes: %d\n", G.N);
+        printf("   Sum of Ranks: %.6f (should be ~1.0)\n", sum_ranks);
+        printf("Average Rank: %.12f\n", sum_ranks / G.N);
+        printf("    Min Rank: %.12f\n", min_rank);
+        printf("    Max Rank: %.12f\n", max_rank);
+
+        printf("\n--- Top 20 Ranked Pages ---\n");
+        printf("Rank |   Node ID |   PageRank Score\n");
+        printf("-----|-----------|------------------\n");
+        int limit = (G.N < 20) ? G.N : 20;
+        for (int i = 0; i < limit; i++) {
+
+            printf("%4d | %9d | %.12f\n", i + 1, ranked_pages[i].id, ranked_pages[i].rank);
+        }
+
         for (int v = 0; v < G.N; v++) {
             printf("pr(%d) = %.12f\n", v, pr[v]);
         }
+        free(ranked_pages);
     }
+
+    
 
     pthread_barrier_destroy(&bar);
     free(threads);
