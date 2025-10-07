@@ -1,33 +1,3 @@
-// RUN: cgeist -O0 %stdinclude %s -S > %s.mlir
-// RUN: cgeist -O0 %stdinclude %s -o %s.exec -lm
-
-// // Knob A — in-neighbor accumulation (loop_perforate)
-// "approxMLIR.util.annotation.decision_tree"() <{
-//   func_name = "compute_sum_in_neighbors",
-//   transform_type = "loop_perforate",
-//   num_thresholds = 1 : i32,
-//   thresholds_uppers = array<i32: 1024>,
-//   thresholds_lowers = array<i32: 0>,
-//   decision_values = array<i32: 0, 1>,
-//   thresholds = array<i32: 64>,
-//   decisions = array<i32: 1, 2>
-// }> : () -> ()
-
-// // Knob B — per-node update (func_substitute)
-// "approxMLIR.util.annotation.decision_tree"() <{
-//   func_name = "update_node_rank",
-//   transform_type = "func_substitute",
-//   num_thresholds = 1 : i32,
-//   thresholds_uppers = array<i32: 1024>,
-//   thresholds_lowers = array<i32: 0>,
-//   decision_values = array<i32: 0, 1>,
-//   thresholds = array<i32: 64>,
-//   decisions = array<i32: 0, 1>
-// }> : () -> ()
-
-// // Required by func_substitute
-// "approxMLIR.util.annotation.convert_to_call"() <{func_name = "update_node_rank"}> : () -> ()
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -58,6 +28,7 @@ typedef struct {
     double *dp_shared;     // per-iter dangling term shared across threads
     int print;             // whether to print at the end (tid 0 will do it)
     int iters;
+    int state;
 } WorkerArgs;
 
 typedef struct {
@@ -215,14 +186,6 @@ static void make_synthetic_graph(int N, int DEG, unsigned int seed, GraphCSR *G)
 
 /* =====================  APPROX-READY KERNELS  ===================== */
 
-/* Caller-side state selection: higher in-degree ⇒ more likely to approximate. */
-static inline int decide_update_state_from_indeg(int indeg) {
-    // Arbitrary boundaries: 0..64 -> 0, 65..256 -> 1, >256 -> 2
-    if (indeg > 256) return 2;
-    if (indeg > 64)  return 1;
-    return 0;
-}
-
 /* Knob A target — inner accumulation over in-neighbors (loop_perforate).
    NOTE: state is forwarded only; not used in logic (pass responsibility to approxMLIR). */
 double compute_sum_in_neighbors(const GraphCSR *G,
@@ -247,7 +210,7 @@ double approx_update_node_rank(const GraphCSR *G,
                                              int v,
                                              double alpha,
                                              double base,
-                                             double dp,
+                                             double dp, int indeg,
                                              int state) {
     /* Simple fast approximation: sample every other in-neighbor (stride 2).
        NOTE: do not branch on `state` here; approxMLIR controls substitution. */
@@ -274,15 +237,58 @@ double update_node_rank(const GraphCSR *G,
                                       int v,
                                       double alpha,
                                       double base,
-                                      double dp,
+                                      double dp, int indeg,
                                       int state) {
-    double sum_in = compute_sum_in_neighbors(G, pr, v, state);
+    double sum_in = compute_sum_in_neighbors(G, pr, v, indeg);
     return base + dp + alpha * sum_in;
 }
 
 /* =====================  WORKER / PARALLEL CODE  ===================== */
 
-static void *pagerank_worker(void *argp) {
+void *approx_pagerank_worker_impl(void *argp, int state) {
+    WorkerArgs *A = (WorkerArgs*)argp;
+    int tid = A->tid, P = A->P, N = A->N;
+    const GraphCSR *G = A->G;
+    const double alpha = A->alpha;
+    const double base = A->base;
+
+    int start = (tid * N) / P;
+    int end   = ((tid + 1) * N) / P;
+
+    for (int it = 0; it < A->iters; it += 2) {
+        // 1) Local dangling sum
+        double local_dangling_sum = 0.0;
+        for (int u = start; u < end; u++) {
+            if (G->outdeg[u] == 0) local_dangling_sum += A->pr[u];
+        }
+        A->dangling_sums[tid] = local_dangling_sum;
+
+        // 2) Reduce to shared dp = alpha * (sum dangling) / N
+        if (tid == 0) {
+            double total = 0.0;
+            for (int t = 0; t < P; t++) total += A->dangling_sums[t];
+            *(A->dp_shared) = alpha * (total / (double)N);
+        }
+        double dp = *(A->dp_shared);
+
+        // 3) Compute next PR for our slice using the knobbed update function
+        for (int v = start; v < end; v++) {
+            int indeg = G->in_row[v+1] - G->in_row[v];
+            // Exact path (approxMLIR may substitute this with approx_update_node_rank)
+            A->pr_next[v] = update_node_rank(G, A->pr, v, alpha, base, dp, indeg, it);
+        }
+
+        // 5) Commit next -> current for our slice
+        for (int v = start; v < end; v++) {
+            ((double*)A->pr)[v] = A->pr_next[v];
+        }
+    }
+
+    return NULL;
+}
+
+
+void *pagerank_worker_impl(void *argp, int state) {
     WorkerArgs *A = (WorkerArgs*)argp;
     int tid = A->tid, P = A->P, N = A->N;
     const GraphCSR *G = A->G;
@@ -315,9 +321,8 @@ static void *pagerank_worker(void *argp) {
         // 3) Compute next PR for our slice using the knobbed update function
         for (int v = start; v < end; v++) {
             int indeg = G->in_row[v+1] - G->in_row[v];
-            int state = decide_update_state_from_indeg(indeg);
             // Exact path (approxMLIR may substitute this with approx_update_node_rank)
-            A->pr_next[v] = update_node_rank(G, A->pr, v, alpha, base, dp, state);
+            A->pr_next[v] = update_node_rank(G, A->pr, v, alpha, base, dp, indeg, it);
         }
 
         // 4) Barrier before overwriting pr
@@ -333,6 +338,11 @@ static void *pagerank_worker(void *argp) {
     }
 
     return NULL;
+}
+
+void *pagerank_worker(void *argp) {
+    WorkerArgs *A = (WorkerArgs*)argp;
+    return pagerank_worker_impl(argp, A->state);
 }
 
 /* =====================  CLI / MAIN (unchanged semantics)  ===================== */
@@ -358,7 +368,7 @@ int main(int argc, char **argv) {
     mode[0] = '\0';
     strncpy(mode, "synthetic", sizeof(mode) - 1);
     char *filepath = NULL;
-    int P = 1;
+    int P = 4;
     int N = 10000;
     int DEG = 10;
     int iters = 50;
@@ -380,9 +390,10 @@ int main(int argc, char **argv) {
         {0,0,0,0}
     };
 
-    int opt, idx;
-    while ((opt = getopt_long(argc, argv, "m:f:t:n:d:i:a:s:ph", long_opts, &idx)) != -1) {
+    int opt, idx, confidence;
+    while ((opt = getopt_long(argc, argv, "e:m:f:t:n:d:i:a:s:ph", long_opts, &idx)) != -1) {
         switch (opt) {
+            case 'e': confidence = atoi(optarg); break;
             case 'm': strncpy(mode, optarg, sizeof(mode)-1); mode[sizeof(mode)-1]=0; break;
             case 'f': filepath = optarg; break;
             case 't': P = atoi(optarg); break;
@@ -457,6 +468,7 @@ int main(int argc, char **argv) {
         args[t].dp_shared = &dp_shared;
         args[t].print = do_print;
         args[t].iters = iters;
+        args[t].state = confidence;
         if (pthread_create(&threads[t], NULL, pagerank_worker, &args[t]) != 0) {
             die("pthread_create");
         }

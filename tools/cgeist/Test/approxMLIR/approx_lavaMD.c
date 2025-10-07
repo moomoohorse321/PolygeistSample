@@ -6,7 +6,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <math.h>
-#include <sys/time.h>
+#include <time.h>
 
 
 #define fp double
@@ -91,21 +91,10 @@ typedef struct dim_str
 
 
 // -------------------- utilities (no knobs) --------------------
-static long long get_time(void) {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return (long long)tv.tv_sec * 1000000LL + (long long)tv.tv_usec;
-}
 static int isInteger(const char *s){ if(!s||!*s) return 0; for(;*s;++s){ if(*s<'0'||*s>'9') return 0; } return 1; }
 
 // -------------------- helper to build states (caller-side only) --------------------
-static inline int state_pair_from_u2(fp u2){
-    // Quantize u² into [0, ...], scaled by 100 (used by func_substitute threshold at 70)
-    if (u2 < (fp)0) u2 = (fp)0;
-    fp scaled = (fp)100.0 * u2;
-    int s = (int)(scaled + (fp)0.5);
-    return s;
-}
+
 static inline int state_self_from_qi(fp qi){
     // |q_i| in ~[0.1,1.0] -> [10,100]
     if (qi < (fp)0) qi = -qi;
@@ -125,53 +114,23 @@ static inline int state_neigh_from_nn(int nn){
 
 int pair_interaction(int pi, int pj, fp a2,
                              FOUR_VECTOR* rv, fp* qv,
-                             FOUR_VECTOR* fv_particle, int state){
-    fp r2 = rv[pi].v + rv[pj].v - DOT(rv[pi], rv[pj]);
-    if (r2 < (fp)0) r2 = (fp)0;
-    fp u2  = a2 * r2;
-    fp vij = (fp)exp(-u2);
-    fp fs  = (fp)2.0 * vij;
-
-    THREE_VECTOR d;
-    d.x = rv[pi].x - rv[pj].x;
-    d.y = rv[pi].y - rv[pj].y;
-    d.z = rv[pi].z - rv[pj].z;
+                             FOUR_VECTOR* fv_particle){
+    double r2 = rv[pi].v + rv[pj].v - DOT(rv[pi], rv[pj]);
+    if (r2 < 0) r2 = 0;
+    double u2  = a2 * r2;
+    double vij = exp(-u2);
+    double fs  = 2.0 * vij;
 
     fv_particle->v += qv[pj] * vij;
-    fv_particle->x += qv[pj] * (fs * d.x);
-    fv_particle->y += qv[pj] * (fs * d.y);
-    fv_particle->z += qv[pj] * (fs * d.z);
-    return state; // not used in callee
+    fv_particle->x += qv[pj] * (fs * (rv[pi].x - rv[pj].x));
+    fv_particle->y += qv[pj] * (fs * (rv[pi].y - rv[pj].y));
+    fv_particle->z += qv[pj] * (fs * (rv[pi].z - rv[pj].z));
+    return 0;
 }
-
-int approx_pair_interaction(int pi, int pj, fp a2,
-                                    FOUR_VECTOR* rv, fp* qv,
-                                    FOUR_VECTOR* fv_particle, int state){
-    // exp(-u²) ≈ 1/(1+u²)
-    fp r2 = rv[pi].v + rv[pj].v - DOT(rv[pi], rv[pj]);
-    if (r2 < (fp)0) r2 = (fp)0; // numerical safety
-    fp u2 = a2 * r2;
-    fp vij = (fp)1.0 / ((fp)1.0 + u2);
-    fp fs  = (fp)2.0 * vij;
-
-    THREE_VECTOR d;
-    d.x = rv[pi].x - rv[pj].x;
-    d.y = rv[pi].y - rv[pj].y;
-    d.z = rv[pi].z - rv[pj].z;
-
-    fv_particle->v += qv[pj] * vij;
-    fv_particle->x += qv[pj] * (fs * d.x);
-    fv_particle->y += qv[pj] * (fs * d.y);
-    fv_particle->z += qv[pj] * (fs * d.z);
-    return state; // not used in callee
-}
-
 // -------------------- self-box accumulate (loop_perforate knob) --------------------
 static void self_box_accumulate(int pi_idx, int first_i, fp a2,
                                 FOUR_VECTOR* rv, fp* qv,
                                 FOUR_VECTOR* fv_particle, int state){
-    // NOTE: 'state' belongs to this knob and is NOT used to alter behavior here.
-    // We still compute a per-pair state for the nested knob (pair_interaction).
     int j;
     for (j = 0; j < NUMBER_PAR_PER_BOX; j++) {
         int pj_idx = first_i + j;
@@ -181,11 +140,9 @@ static void self_box_accumulate(int pi_idx, int first_i, fp a2,
         fp r2 = rv[pi_idx].v + rv[pj_idx].v - DOT(rv[pi_idx], rv[pj_idx]);
         if (r2 < (fp)0) r2 = (fp)0;
         fp u2 = a2 * r2;
-        int pair_state = state_pair_from_u2(u2);
 
-        pair_interaction(pi_idx, pj_idx, a2, rv, qv, fv_particle, pair_state);
+        pair_interaction(pi_idx, pj_idx, a2, rv, qv, fv_particle);
     }
-    (void)state;
 }
 
 // -------------------- neighbor-box accumulate (loop_perforate knob) --------------------
@@ -205,12 +162,10 @@ static void neighbor_box_accumulate(int pi_idx, int bx, fp a2,
             fp r2 = rv[pi_idx].v + rv[pj_idx].v - DOT(rv[pi_idx], rv[pj_idx]);
             if (r2 < (fp)0) r2 = (fp)0;
             fp u2 = a2 * r2;
-            int pair_state = state_pair_from_u2(u2);
 
-            pair_interaction(pi_idx, pj_idx, a2, rv, qv, fv_particle, pair_state);
+            pair_interaction(pi_idx, pj_idx, a2, rv, qv, fv_particle);
         }
     }
-    (void)state;
 }
 
 // -------------------- non-knob wrapper over a box --------------------
@@ -223,12 +178,9 @@ static void process_home_box(int bx, fp a2, box_str* box,
 
         FOUR_VECTOR acc = {0,0,0,0};
 
-        // Build states for the two outer knobs (caller-side!)
-        int state_self  = state_self_from_qi(qv[pi_idx]);          // for self_box_accumulate
-        int state_neigh = state_neigh_from_nn(box[bx].nn);         // for neighbor_box_accumulate
 
-        self_box_accumulate   (pi_idx, first_i, a2, rv, qv, &acc, state_self);
-        neighbor_box_accumulate(pi_idx, bx,      a2, box, rv, qv, &acc, state_neigh);
+        self_box_accumulate   (pi_idx, first_i, a2, rv, qv, &acc, qv[pi_idx] * 100);
+        neighbor_box_accumulate(pi_idx, bx,      a2, box, rv, qv, &acc, box[bx].nn);
 
         fv[pi_idx].v += acc.v;
         fv[pi_idx].x += acc.x;
@@ -305,13 +257,17 @@ int main(int argc, char *argv[]) {
     }
 
     // run
-    long long t0=get_time();
+    struct timespec start, end;
+    clock_gettime(CLOCK_MONOTONIC, &start);
+    
     fp a2 = (fp)2.0 * par_cpu.alpha * par_cpu.alpha;
     for (int bx=0; bx<dim_cpu.number_boxes; ++bx) {
         process_home_box(bx, a2, box_cpu, rv_cpu, qv_cpu, fv_cpu);
     }
-    long long t1=get_time();
-    printf("Total execution time: %f seconds\n", (double)(t1-t0)/1e6);
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    double elapsed_ms = (end.tv_sec - start.tv_sec) * 1000.0 +
+                        (end.tv_nsec - start.tv_nsec) / 1.0e6;
+    printf("Total execution time: %.3f ms\n", elapsed_ms);
 
     printf("\n--- Simulation Statistics ---\n");
     printf("Total Particles: %ld\n", dim_cpu.space_elem);

@@ -1,47 +1,13 @@
-// RUN: cgeist -O0 %stdinclude %s -S > %s.mlir
-// RUN: cgeist -O0 %stdinclude %s -o %s.exec -lm
-
-// // Knob — CNDF substitution (proper func_substitute)
-// "approxMLIR.util.annotation.decision_tree"() <{
-//   func_name = "compute_cndf",
-//   transform_type = "func_substitute",
-//   num_thresholds = 1 : i32,
-//   thresholds_uppers = array<i32: 2>,
-//   thresholds_lowers = array<i32: 0>,
-//   decision_values = array<i32: 0, 1>,
-//   thresholds = array<i32: 1>,
-//   decisions = array<i32: 0, 1>
-// }> : () -> ()
-
-
-// // Required for func_substitute
-// "approxMLIR.util.annotation.convert_to_call"() <{func_name = "compute_cndf"}> : () -> ()
-
-// // Knob — Black-Scholes approximation (func_substitute)
-// "approxMLIR.util.annotation.decision_tree"() <{
-//   func_name = "BlkSchlsEqEuroNoDiv",
-//   transform_type = "func_substitute",
-//   num_thresholds = 1 : i32,
-//   thresholds_uppers = array<i32: 2>,
-//   thresholds_lowers = array<i32: 0>,
-//   decision_values = array<i32: 0, 1>,
-//   thresholds = array<i32: 1>,
-//   decisions = array<i32: 0, 1>
-// }> : () -> ()
-
-// // Required for func_substitute
-// "approxMLIR.util.annotation.convert_to_call"() <{func_name = "BlkSchlsEqEuroNoDiv"}> : () -> ()
-
-
-// ------------------------------- C code -------------------------------
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
 #include <time.h>
+#include <stdint.h>
 
-int knob[2];
+// int knob[2];
+
+// #define ENABLE_PROF // comment it out when not needed
 
 #define TYPE_DOUBLE 0
 #define TYPE_FLOAT  1
@@ -60,6 +26,12 @@ fptype *rate = NULL;
 fptype *volatility = NULL;
 fptype *otime = NULL;
 
+#ifdef ENABLE_PROF
+#define PROFILE(x, y) printf("knob[%d] : state = %d\n", x, y)
+#else
+#define PROFILE(x, y) while(0)
+#endif 
+
 // -------------------- Small utility --------------------
 static void die(const char* msg) {
     fprintf(stderr, "%s\n", msg);
@@ -69,14 +41,16 @@ static void die(const char* msg) {
 // Computes caller-side states summarizing approximation safety:
 static inline int decide_cndf_state(fptype x) {
     // Near 0 → safe to approximate, tails → exact
-    return (fabs(x) > 2.0 ? 2 : fabs(x) > 1.0 ? 1 : 0);
+    PROFILE(1, (int)fabs(x));
+    return (int)fabs(x);
 }
 
 static inline int decide_bs_state(fptype s, fptype K, fptype r, fptype t) {
     // ATM vs OTM and discount factor sensitivity
     fptype a = fabs(s / K - 1.0);   // distance from ATM
     fptype b = fabs(r) * t;         // discount impact
-    return (a > 0.30) + (b > 0.20); // 0 = safe, 1 = partial, 2 = exact
+    PROFILE(2, (int)fabs(a * 10 + b * 10));
+    return (int)fabs(a * 10 + b * 10);
 }
 
 
@@ -157,77 +131,73 @@ void readDataAsInt(FILE *fd, int **data, size_t *numElements){
 }
 
 // -------------------- Math constants --------------------
-static const fptype inv_sqrt_2xPI = 0.39894228040143270286;
-static const fptype zero  = 0.0;
-static const fptype half  = 0.5;
-static const fptype const1= 0.2316419;
-static const fptype one   = 1.0;
-static const fptype const2= 0.319381530;
-static const fptype const3= 0.356563782;
-static const fptype const4= 1.781477937;
-static const fptype const5= 1.821255978;
-static const fptype const6= 1.330274429;
+static const double inv_sqrt_2xPI = 0.39894228040143270286;
+static const double zero  = 0.0;
+static const double half  = 0.5;
+static const double const1= 0.2316419;
+static const double one   = 1.0;
+static const double const2= 0.319381530;
+static const double const3= 0.356563782;
+static const double const4= 1.781477937;
+static const double const5= 1.821255978;
+static const double const6= 1.330274429;
 
+double knob2_time = 0;
 // exact CNDF
-fptype compute_cndf(fptype x, int state) {
+double compute_cndf(double x, int state) {
     int sign = 0;
     if (x < zero) { x = -x; sign = 1; }
-    fptype nprime = exp(-half * x * x) * inv_sqrt_2xPI;
-    fptype k = one / (one + const1 * x);
-    fptype k2 = k*k, k3 = k2*k, k4 = k3*k, k5 = k4*k;
-    fptype poly = k*const2 + k2*(-const3) + k3*const4 + k4*(-const5) + k5*const6;
-    fptype cdf = one - poly*nprime;
+    double nprime = exp(-half * x * x) * inv_sqrt_2xPI;
+    double k = one / (one + const1 * x);
+    double k2 = k*k, k3 = k2*k, k4 = k3*k, k5 = k4*k;
+    double poly = k*const2 + k2*(-const3) + k3*const4 + k4*(-const5) + k5*const6;
+    double cdf = one - poly*nprime;
     return sign ? (one - cdf) : cdf;
 }
 
 // approximate CNDF (fewer terms)
-fptype approx_compute_cndf(fptype x, int state) {
-    knob[0]++;
+float approx_compute_cndf_1(float x, int state) {
     int sign = 0;
-    if (x < zero) { x = -x; sign = 1; }
-    fptype nprime = exp(-half * x * x) * inv_sqrt_2xPI;
-    fptype k = one / (one + const1 * x);
-    fptype k2 = k*k, k3 = k2*k;
-    fptype poly = k*const2 + k2*(-const3) + k3*const4; // truncated series
-    fptype cdf = one - poly*nprime;
-    return sign ? (one - cdf) : cdf;
+    if (x < 0) { x = -x; sign = 1; }
+    
+    float nprime = expf(- 0.5 * x * x) * 0.399;
+    float k = 1.0 / (1.0 + 0.23 * x);
+    float k2 = k*k, k3 = k2*k, k4 = k3*k, k5 = k4*k;
+    float poly = k*0.319 + k2*(-0.356) + k3*1.78 + k4*(-1.82) + k5*1.33;
+    float cdf = 1.0 - poly*nprime;
+    return sign ? (1.0 - cdf) : cdf;
 }
 
 // Approximate Black-Scholes pricing: faster but less accurate
-fptype approx_BlkSchlsEqEuroNoDiv(fptype s, fptype K, fptype r,
-                                  fptype v, fptype t, int state) {
-    knob[1]++;
+float approx_BlkSchlsEqEuroNoDiv(float s, float K, float r,
+                                  float v, float t, int state) {
     // Approx sqrt is okay
-    fptype sqrtT = sqrt(t);
+    float sqrtT = sqrt(t);
 
     // Approximate log with a fast series: log(1+x) ≈ x - x²/2 for |x| small
     // Fall back to normal log if ratio far from 1 to avoid huge errors
-    fptype ratio = s / K;
-    fptype logTerm;
-    if (fabs(ratio - 1.0) < 0.3) {
-        fptype x = ratio - 1.0;
-        logTerm = x - (x * x) * 0.5;
-    } else {
-        logTerm = log(ratio);
-    }
+    float ratio = s / K;
+    float logTerm;
+    
+    float x = ratio - 1.0;
+    logTerm = x - (x * x) * 0.5;
+    
 
     // Same d1/d2 formulas
-    fptype d1 = ((r + (v*v)*half) * t + logTerm) / (v * sqrtT);
-    fptype d2 = d1 - v * sqrtT;
+    float d1 = ((r + (v*v)*half) * t + logTerm) / (v * sqrtT);
+    float d2 = d1 - v * sqrtT;
 
     // Approximate exp(-r*t) with 1 - r*t for small t
-    fptype discK;
-    if (r * t < 0.2)
-        discK = (1.0 - r * t) * K;
-    else
-        discK = exp(-r * t) * K;
+    float discK;
+
+    discK = (1.0 - r * t) * K;
 
     int cndf_state_d1 = decide_cndf_state(d1);
     int cndf_state_d2 = decide_cndf_state(d2);
 
     // Use exact CNDF for now, though you could chain its approximation knob too
-    fptype Nd1 = compute_cndf(d1, cndf_state_d1);
-    fptype Nd2 = compute_cndf(d2, cndf_state_d1);
+    float Nd1 = compute_cndf(d1, cndf_state_d1);
+    float Nd2 = compute_cndf(d2, cndf_state_d1);
 
     return discK * (1.0 - Nd2) - s * (1.0 - Nd1);
 }
@@ -240,8 +210,27 @@ static inline fptype BlkSchlsEqEuroNoDiv(fptype s, fptype K, fptype r,
     fptype logTerm= log(s / K);
     fptype d1 = ((r + (v*v)*half) * t + logTerm) / (v * sqrtT);
     fptype d2 = d1 - v * sqrtT;
-    fptype Nd1 = compute_cndf(d1, 0);   // knob can substitute this call
-    fptype Nd2 = compute_cndf(d2, 0);
+    int cndf_state_d1 = decide_cndf_state(d1);
+    int cndf_state_d2 = decide_cndf_state(d2);
+    
+    struct timespec start, end;
+    clock_gettime(CLOCK_MONOTONIC, &start);
+    // fptype Nd1 = approx_compute_cndf_1(d1, cndf_state_d1);   // knob can substitute this call
+    // fptype Nd2 = approx_compute_cndf_1(d2, cndf_state_d2);
+    // for(int i = 0; i < 10; i++ ) {
+    //     approx_compute_cndf_1(d1, cndf_state_d1);
+    //     approx_compute_cndf_1(d2, cndf_state_d2);
+    // }
+    fptype Nd1 = compute_cndf(d1, cndf_state_d1);   // knob can substitute this call
+    fptype Nd2 = compute_cndf(d2, cndf_state_d2);
+    for(int i = 0; i < 10; i++ ) {
+        compute_cndf(d1, cndf_state_d1);
+        compute_cndf(d2, cndf_state_d2);
+    }
+    
+    clock_gettime(CLOCK_MONOTONIC, &end); // 250 ms overhead in profiling 
+    knob2_time += (end.tv_sec - start.tv_sec) * 1000.0 +
+                        (end.tv_nsec - start.tv_nsec) / 1.0e6;
     fptype discK = exp(-r * t) * K;
     // Put price (matches your original path)
     return discK * (1.0 - Nd2) - s * (1.0 - Nd1);
@@ -295,11 +284,16 @@ static void writeTextResults(const char* txtPath,
 
 // -------------------- Compute (serial) --------------------
 int bs_thread(){
-    clock_t t0 = clock();
-    price_range(0, numOptions);  
-    clock_t t1 = clock();
-    double secs = (double)(t1 - t0) / CLOCKS_PER_SEC;
-    printf("Elapsed: %f\n", secs);
+    struct timespec start, end;
+   clock_gettime(CLOCK_MONOTONIC, &start);
+   
+   for(int i = 0; i < 10; i++) price_range(0, numOptions);  
+
+   clock_gettime(CLOCK_MONOTONIC, &end);
+   double elapsed_ms = (end.tv_sec - start.tv_sec) * 1000.0 +
+                       (end.tv_nsec - start.tv_nsec) / 1.0e6;
+    printf("Elapsed: %f\n", elapsed_ms / 10);
+    printf("knob 2 : %.3f\n", knob2_time / 10);
     return 0;
 }
 
@@ -380,8 +374,6 @@ int main(int argc, char **argv){
             printf("%3zu | %13.6f | %13.6f | %13.6f | %13.6f | %13.6f | %12.6f\n",
                 i, sptprice[i], strike[i], rate[i], volatility[i], otime[i], prices[i]);
         }
-        for(int i = 0; i < 2; i++)
-            printf("knob[%d] = %d\n", i, knob[i]);
         printf("------------------------------------------------------------------------------------------------\n");
     }
     {

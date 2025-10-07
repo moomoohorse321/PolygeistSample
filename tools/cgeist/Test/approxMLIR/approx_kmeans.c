@@ -1,44 +1,3 @@
-// RUN: cgeist -O0 %stdinclude %s -S > %s.mlir
-// RUN: cgeist -O0 %stdinclude %s -o %s.exec
-
-// // Knob — distance computation (func_substitute)
-// "approxMLIR.util.annotation.decision_tree"() <{
-//   func_name = "compute_distance_sq",
-//   transform_type = "func_substitute",
-//   num_thresholds = 1 : i32,
-//   thresholds_uppers = array<i32: 64>,
-//   thresholds_lowers = array<i32: 0>,
-//   decision_values = array<i32: 0, 1>,
-//   thresholds = array<i32: 16>,
-//   decisions = array<i32: 0, 1>
-// }> : () -> ()
-// // Required for func_substitute
-// "approxMLIR.util.annotation.convert_to_call"() <{func_name = "compute_distance_sq"}> : () -> ()
-
-// // Knob — choosing nearest centroid (loop_perforate over centroids)
-// "approxMLIR.util.annotation.decision_tree"() <{
-//   func_name = "choose_cluster",
-//   transform_type = "loop_perforate",
-//   num_thresholds = 1 : i32,
-//   thresholds_uppers = array<i32: 16>,
-//   thresholds_lowers = array<i32: 0>,
-//   decision_values = array<i32: 0, 1>,
-//   thresholds = array<i32: 8>,
-//   decisions = array<i32: 1, 2>
-// }> : () -> ()
-
-// // Knob — assigning points & accumulating (loop_perforate over points)
-// "approxMLIR.util.annotation.decision_tree"() <{
-//   func_name = "assign_points_and_accumulate",
-//   transform_type = "loop_perforate",
-//   num_thresholds = 1 : i32,
-//   thresholds_uppers = array<i32: 2000000>,
-//   thresholds_lowers = array<i32: 0>,
-//   decision_values = array<i32: 0, 1>,
-//   thresholds = array<i32: 10000>,
-//   decisions = array<i32: 1, 2>
-// }> : () -> ()
-
 #include <math.h>
 #include <stdlib.h>
 #include <float.h>
@@ -49,23 +8,15 @@
 int seed = 42;
 
 /* -------------------- Prototypes -------------------- */
-static inline int decide_distance_state(int dim);
-static inline int decide_choose_state(int k);
-static inline int decide_points_state(int num_points);
 
 double compute_distance_sq(const double *point1, const double *point2, int dim, int state);
-double approx_compute_distance_sq(const double *point1, const double *point2, int dim, int state);
 
 int choose_cluster(const double *point, double **centroids, int k, int dim,
                    int dist_state, int state);
 
 void reset_accumulators(double **new_centroids, int *cluster_sizes, int k, int dim);
-void assign_points_and_accumulate(double **points, double **centroids, int *assignments,
-                                  int *cluster_sizes, double **new_centroids,
-                                  int num_points, int dim, int k,
-                                  int dist_state, int choose_state, int state);
 void recompute_centroids(double **centroids, double **new_centroids,
-                         const int *cluster_sizes, int k, int dim, int state);
+                         const int *cluster_sizes, int k, int dim);
 
 void kmeans_kernel(double **points, double **centroids, int *assignments,
                    int num_points, int dim, int k, int max_iters);
@@ -74,24 +25,7 @@ void generate_random_data(double **points, double **centroids, int num_points, i
 void print_results(double **points, double **centroids, int *assignments,
                    int num_points, int dim, int k);
 
-/* -------------------- State deciders (caller side) -------------------- */
-static inline int decide_distance_state(int dim) {
-    /* Heuristic: higher dim → allow stronger approx (state=1), else exact (0) */
-    return (dim > 16) ? 1 : 0;
-}
-static inline int decide_choose_state(int k) {
-    /* Heuristic: many clusters → allow perforation (state=1) */
-    return (k > 8) ? 1 : 0;
-}
-static inline int decide_points_state(int num_points) {
-    /* Heuristic: many points → allow perforation (state=1) */
-    return (num_points > 10000) ? 1 : 0;
-}
-
-/* -------------------- Compute-heavy kernels (ONE KNOB EACH) -------------------- */
-/* 1) Exact distance squared (knob: func_substitute on this function) */
 double compute_distance_sq(const double *point1, const double *point2, int dim, int state) {
-    (void)state; /* exact baseline ignores state */
     double sum = 0.0;
     for (int i = 0; i < dim; i++) {
         double diff = point1[i] - point2[i];
@@ -100,22 +34,9 @@ double compute_distance_sq(const double *point1, const double *point2, int dim, 
     return sum;
 }
 
-/* Approximate variant for func_substitute (not called in exact run) */
-double approx_compute_distance_sq(const double *point1, const double *point2, int dim, int state) {
-    double sum = 0.0;
-    for (int i = 0; i < dim; i += 2) {
-        double diff = point1[i] - point2[i];
-        sum += diff * diff;
-    }
-    /* scale to roughly compensate */
-    if (dim > 1) sum *= 2.0;
-    return sum;
-}
-
 /* 2) Choose nearest centroid (knob: loop_perforate over centroids) */
 int choose_cluster(const double *point, double **centroids, int k, int dim,
                    int dist_state, int state) {
-    (void)state; /* exact baseline ignores state */
     double min_dist = DBL_MAX;
     int best_cluster = 0;
     for (int c = 0; c < k; c++) {
@@ -139,10 +60,9 @@ void reset_accumulators(double **new_centroids, int *cluster_sizes, int k, int d
 void assign_points_and_accumulate(double **points, double **centroids, int *assignments,
                                   int *cluster_sizes, double **new_centroids,
                                   int num_points, int dim, int k,
-                                  int dist_state, int choose_state, int state) {
-    (void)state; /* exact baseline ignores state */
+                                  int choose_state, int state) {
     for (int i = 0; i < num_points; i++) {
-        int best = choose_cluster(points[i], centroids, k, dim, dist_state, choose_state);
+        int best = choose_cluster(points[i], centroids, k, dim, i, choose_state);
         assignments[i] = best;
         cluster_sizes[best]++;
         for (int j = 0; j < dim; j++) {
@@ -152,8 +72,7 @@ void assign_points_and_accumulate(double **points, double **centroids, int *assi
 }
 
 void recompute_centroids(double **centroids, double **new_centroids,
-                         const int *cluster_sizes, int k, int dim, int state) {
-    (void)state; /* exact baseline ignores state */
+                         const int *cluster_sizes, int k, int dim) {
     for (int c = 0; c < k; c++) {
         if (cluster_sizes[c] > 0) {
             double inv = 1.0 / (double)cluster_sizes[c];
@@ -165,35 +84,40 @@ void recompute_centroids(double **centroids, double **new_centroids,
 }
 
 /* -------------------- K-means driver (refactored to call kernels) -------------------- */
-void kmeans_kernel(double **points, double **centroids, int *assignments,
-                   int num_points, int dim, int k, int max_iters) {
-    int c, iter, j;
 
-    int *cluster_sizes = (int *)malloc((size_t)k * sizeof(int));
-    double **new_centroids = (double **)malloc((size_t)k * sizeof(double *));
-    for (c = 0; c < k; c++) {
-        new_centroids[c] = (double *)malloc((size_t)dim * sizeof(double));
-    }
-
-    /* Decide states once per run (cheap heuristics; arbitrary) */
-    int dist_state   = decide_distance_state(dim);
-    int choose_state = decide_choose_state(k);
-    int pts_state    = decide_points_state(num_points);
-
-    for (iter = 0; iter < max_iters; iter++) {
+void run_kmeans_iterations(int max_iters, int k, int dim, int num_points,
+                           double **points, double **centroids, int *assignments,
+                           double **new_centroids, int *cluster_sizes, int state) {
+    for (int iter = 0; iter < max_iters; iter++) {
         reset_accumulators(new_centroids, cluster_sizes, k, dim);
         assign_points_and_accumulate(points, centroids, assignments,
                                      cluster_sizes, new_centroids,
                                      num_points, dim, k,
-                                     dist_state, choose_state, pts_state);
-        recompute_centroids(centroids, new_centroids, cluster_sizes, k, dim, 0);
+                                     iter /* choose state*/, iter /* pt_state */);
+        recompute_centroids(centroids, new_centroids, cluster_sizes, k, dim);
+    }
+}
+
+void kmeans_kernel(double **points, double **centroids, int *assignments,
+                   int num_points, int dim, int k, int max_iters) {
+    // Allocate memory for temporary data
+    int *cluster_sizes = (int *)malloc((size_t)k * sizeof(int));
+    double **new_centroids = (double **)malloc((size_t)k * sizeof(double *));
+    for (int c = 0; c < k; c++) {
+        new_centroids[c] = (double *)malloc((size_t)dim * sizeof(double));
     }
 
-    for (c = 0; c < k; c++) free(new_centroids[c]);
+    // Run the main K-Means iterations
+    run_kmeans_iterations(max_iters, k, dim, num_points, points, centroids,
+                          assignments, new_centroids, cluster_sizes, num_points);
+
+    // Free the allocated memory
+    for (int c = 0; c < k; c++) {
+        free(new_centroids[c]);
+    }
     free(new_centroids);
     free(cluster_sizes);
 }
-
 /* -------------------- Helpers (no knobs) -------------------- */
 void generate_random_data(double **points, double **centroids, int num_points, int dim, int k) {
     srand((unsigned int)seed);
@@ -279,11 +203,13 @@ int main(int argc, char **argv) {
 
     generate_random_data(points, centroids, num_points, dim, k);
 
-    clock_t start = clock();
+    struct timespec start, end;
+    clock_gettime(CLOCK_MONOTONIC, &start);
     kmeans_kernel(points, centroids, assignments, num_points, dim, k, max_iters);
-    clock_t end = clock();
-    double time_spent = (double)(end - start) / CLOCKS_PER_SEC;
-    printf("\nK-means completed in %.3f seconds\n", time_spent);
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    double elapsed_ms = (end.tv_sec - start.tv_sec) * 1000.0 +
+                       (end.tv_nsec - start.tv_nsec) / 1.0e6;
+    printf("\nK-means completed in %.3f ms\n", elapsed_ms);
 
     print_results(points, centroids, assignments, num_points, dim, k);
 
