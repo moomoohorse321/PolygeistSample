@@ -537,10 +537,10 @@ int main(int argc, char **argv)
    struct timespec start, end;
    clock_gettime(CLOCK_MONOTONIC, &start);
    DocumentScore *ranked_scores = rank_documents_bm25(query, corpus, num_docs, confidence);
-   clock_gettime(CLOCK_MONOTONIC, &end);
+   clock_gettime(CLOCK_MONOTONIC, &end); 
    double elapsed_ms = (end.tv_sec - start.tv_sec) * 1000.0 +
                        (end.tv_nsec - start.tv_nsec) / 1.0e6;
-
+   // (sum(kernel_time) - sum(kernel_profiled_cnt) * profile_overhead) / 10000
 
    if (ranked_scores)
    {
