@@ -18,6 +18,14 @@ typedef struct {
     double score;
 } DocumentScore;
 
+int compare_scores(const void *a, const void *b) {
+    const DocumentScore *score_a = (const DocumentScore *)a;
+    const DocumentScore *score_b = (const DocumentScore *)b;
+    if (score_b->score > score_a->score) return 1;
+    if (score_b->score < score_a->score) return -1;
+    return 0;
+}
+
 // ---------- small helpers (no knobs) ----------
 static inline char *lower_dup(const char *s) {
     if (!s) return NULL;
@@ -344,7 +352,7 @@ DocumentScore* rank_documents_bm25(char *query, char **corpus, int num_docs, int
     free(lower_corpus);
     free(doc_lengths);
 
-    // NOTE: we intentionally DO NOT sort, to match your current behavior.
+    qsort(scores, (size_t)num_docs, sizeof(DocumentScore), compare_scores);
     return scores;
 }
 
@@ -416,7 +424,7 @@ DocumentScore* approx_rank_documents_bm25_1(char *query, char **corpus, int num_
         free(lower_term);
     }
 
-    // NOTE: we intentionally DO NOT sort, to match your current behavior.
+    qsort(scores, (size_t)num_docs, sizeof(DocumentScore), compare_scores);
     return scores;
 }
 
@@ -485,7 +493,7 @@ DocumentScore* approx_rank_documents_bm25_2(char *query, char **corpus, int num_
         free(lower_term);
     }
 
-    // NOTE: we intentionally DO NOT sort, to match your current behavior.
+    qsort(scores, (size_t)num_docs, sizeof(DocumentScore), compare_scores);
     return scores;
 }
 
