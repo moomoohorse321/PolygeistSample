@@ -146,7 +146,7 @@ static void self_box_accumulate(int pi_idx, int first_i, fp a2,
 }
 
 // -------------------- neighbor-box accumulate (loop_perforate knob) --------------------
-static void neighbor_box_accumulate(int pi_idx, int bx, fp a2,
+void neighbor_box_accumulate(int pi_idx, int bx, fp a2,
                                     box_str* box, FOUR_VECTOR* rv, fp* qv,
                                     FOUR_VECTOR* fv_particle, int state){
     int k;
@@ -156,6 +156,75 @@ static void neighbor_box_accumulate(int pi_idx, int bx, fp a2,
 
         int j;
         for (j = 0; j < NUMBER_PAR_PER_BOX; j++) {
+            int pj_idx = off + j;
+
+            // caller-side state for nested knob A (based on u²)
+            fp r2 = rv[pi_idx].v + rv[pj_idx].v - DOT(rv[pi_idx], rv[pj_idx]);
+            if (r2 < (fp)0) r2 = (fp)0;
+            fp u2 = a2 * r2;
+
+            pair_interaction(pi_idx, pj_idx, a2, rv, qv, fv_particle);
+        }
+    }
+}
+
+void approx_neighbor_box_accumulate_1(int pi_idx, int bx, fp a2,
+                                    box_str* box, FOUR_VECTOR* rv, fp* qv,
+                                    FOUR_VECTOR* fv_particle, int state){
+    int k;
+    for (k = 0; k < box[bx].nn; k++) {
+        int nb  = box[bx].nei[k].number;
+        int off = box[nb].offset;
+
+        int j;
+        for (j = 0; j < NUMBER_PAR_PER_BOX; j++) {
+            if((j & 7) == 7) continue;
+            int pj_idx = off + j;
+
+            // caller-side state for nested knob A (based on u²)
+            fp r2 = rv[pi_idx].v + rv[pj_idx].v - DOT(rv[pi_idx], rv[pj_idx]);
+            if (r2 < (fp)0) r2 = (fp)0;
+            fp u2 = a2 * r2;
+
+            pair_interaction(pi_idx, pj_idx, a2, rv, qv, fv_particle);
+        }
+    }
+}
+
+void approx_neighbor_box_accumulate_2(int pi_idx, int bx, fp a2,
+                                    box_str* box, FOUR_VECTOR* rv, fp* qv,
+                                    FOUR_VECTOR* fv_particle, int state){
+    int k;
+    for (k = 0; k < box[bx].nn; k++) {
+        int nb  = box[bx].nei[k].number;
+        int off = box[nb].offset;
+
+        int j;
+
+        for (j = 0; j < NUMBER_PAR_PER_BOX; j++) {
+            int pj_idx = off + j;
+            if((j & 3) == 3) continue;
+            // caller-side state for nested knob A (based on u²)
+            fp r2 = rv[pi_idx].v + rv[pj_idx].v - DOT(rv[pi_idx], rv[pj_idx]);
+            if (r2 < (fp)0) r2 = (fp)0;
+            fp u2 = a2 * r2;
+
+            pair_interaction(pi_idx, pj_idx, a2, rv, qv, fv_particle);
+        }
+    }
+}
+
+void approx_neighbor_box_accumulate_3(int pi_idx, int bx, fp a2,
+                                    box_str* box, FOUR_VECTOR* rv, fp* qv,
+                                    FOUR_VECTOR* fv_particle, int state){
+    int k;
+    for (k = 0; k < box[bx].nn; k++) {
+        int nb  = box[bx].nei[k].number;
+        int off = box[nb].offset;
+
+        int j;
+        for (j = 0; j < NUMBER_PAR_PER_BOX; j++) {
+            if(j & 1) continue;
             int pj_idx = off + j;
 
             // caller-side state for nested knob A (based on u²)
@@ -180,7 +249,7 @@ static void process_home_box(int bx, fp a2, box_str* box,
 
 
         self_box_accumulate   (pi_idx, first_i, a2, rv, qv, &acc, qv[pi_idx] * 100);
-        neighbor_box_accumulate(pi_idx, bx,      a2, box, rv, qv, &acc, box[bx].nn);
+        neighbor_box_accumulate(pi_idx, bx,      a2, box, rv, qv, &acc, rand() % 10);
 
         fv[pi_idx].v += acc.v;
         fv[pi_idx].x += acc.x;

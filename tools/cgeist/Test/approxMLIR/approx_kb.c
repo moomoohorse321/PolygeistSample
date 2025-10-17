@@ -55,7 +55,7 @@ int approx_parse_embedding_1(const char *embedding_str, float *embedding, int st
 
     char *token = strtok_r(copy, ",]", &saveptr);
     while (token && count < EMBEDDING_DIM) {
-        token[6] = '\0';
+        token[8] = '\0';
         embedding[count] = (float)atof(token);
         count++;
         token = strtok_r(NULL, ",]", &saveptr);
@@ -78,7 +78,7 @@ int approx_parse_embedding_2(const char *embedding_str, float *embedding, int st
 
     char *token = strtok_r(copy, ",]", &saveptr);
     while (token && count < EMBEDDING_DIM) {
-        token[4] = '\0';
+        token[5] = '\0';
         embedding[count] = (float)atof(token);
         count++;
         token = strtok_r(NULL, ",]", &saveptr);
@@ -146,13 +146,12 @@ void approx_compute_similarities_with_state_1(int cos_state) {
 
     for (int i = 0; i < num_documents; i++) {
         // ADDED: Parse the string embedding into the temporary float array.
-        if(rand() % 100 < 80) {
-            if (parse_embedding(documents[i].embedding, doc_embedding_floats, rand() % 4)) {
+        if(rand() % 100 < 95) {
+            if (parse_embedding(documents[i].embedding, doc_embedding_floats, rand() % 10)) {
                 documents[i].similarity =
                     cosine_similarity_core(query_embedding, doc_embedding_floats);
             } else {
-                // Handle cases where parsing might fail
-                documents[i].similarity = -2.0f; // Assign a very low score
+                exit(-1);
             }
         } else {
             documents[i].similarity = -2.0;
@@ -165,33 +164,12 @@ void approx_compute_similarities_with_state_2(int cos_state) {
 
     for (int i = 0; i < num_documents; i++) {
         // ADDED: Parse the string embedding into the temporary float array.
-        if(rand() % 100 < 60) {
-            if (parse_embedding(documents[i].embedding, doc_embedding_floats, rand() % 4)) {
+        if(rand() % 100 < 90) {
+            if (parse_embedding(documents[i].embedding, doc_embedding_floats, rand() % 10)) {
                 documents[i].similarity =
                     cosine_similarity_core(query_embedding, doc_embedding_floats);
             } else {
-                // Handle cases where parsing might fail
-                documents[i].similarity = -2.0f; // Assign a very low score
-            }
-        } else {
-            documents[i].similarity = -2.0;
-        }
-    }
-}
-
-void approx_compute_similarities_with_state_3(int cos_state) {
-    // ADDED: Create a temporary array to hold the parsed float values.
-    float doc_embedding_floats[EMBEDDING_DIM];
-
-    for (int i = 0; i < num_documents; i++) {
-        // ADDED: Parse the string embedding into the temporary float array.
-        if(rand() % 100 < 40) {
-            if (parse_embedding(documents[i].embedding, doc_embedding_floats, rand() % 4)) {
-                documents[i].similarity =
-                    cosine_similarity_core(query_embedding, doc_embedding_floats);
-            } else {
-                // Handle cases where parsing might fail
-                documents[i].similarity = -2.0f; // Assign a very low score
+                exit(-1);
             }
         } else {
             documents[i].similarity = -2.0;
@@ -206,12 +184,11 @@ void compute_similarities_with_state(int cos_state) {
 
     for (int i = 0; i < num_documents; i++) {
         // ADDED: Parse the string embedding into the temporary float array.
-        if (parse_embedding(documents[i].embedding, doc_embedding_floats, rand() % 4)) {
+        if (parse_embedding(documents[i].embedding, doc_embedding_floats, rand() % 10)) {
             documents[i].similarity =
                 cosine_similarity_core(query_embedding, doc_embedding_floats);
         } else {
-            // Handle cases where parsing might fail
-            documents[i].similarity = -2.0f; // Assign a very low score
+            exit(-1);
         }
     }
 }
@@ -251,7 +228,9 @@ int main(int argc, char *argv[]) {
 
     const char *query_embedding_str = argv[1];
     int top_k = (argc > 2) ? atoi(argv[2]) : 10;
-    int confidence = (argc > 3) ? atoi(argv[3]) : rand() % 3 + 1;
+    int confidence = (argc > 3) ? atoi(argv[3]) : rand() % 5 + 1;
+
+    printf("confidence = %d\n", confidence);
 
     char formatted_query[strlen(query_embedding_str) + 3];
     sprintf(formatted_query, "[%s]", query_embedding_str);

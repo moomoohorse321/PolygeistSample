@@ -11,6 +11,7 @@
 // --- BM25 Parameters ---
 const double K1 = 1.5;
 const double B  = 0.75;
+int printed_doc;
 
 // --- Helper Struct for Ranking ---
 typedef struct {
@@ -67,32 +68,13 @@ int approx_count_and_lower_words_1(char *str, int len, int state) {
     char *p = str;
     int in_word = 0;
     while (len >= 0) {
-        *p = (char)tolower((unsigned char)*p);
-        if (isalnum((unsigned char)*p)) {
-            if (!in_word) { in_word = 1; count+=2; }
+        if (' ' != (unsigned char)*p) {
+            if (!in_word) { *p = (char)tolower((unsigned char)*p); in_word = 1; count++; }
         } else {
             in_word = 0;
         }
-        p+=2;
-        len-=2;
-    }
-    return count;
-}
-
-int approx_count_and_lower_words_2(char *str, int len, int state) {
-    if (str == NULL || *str == '\0') return 0;
-    int count = 0;
-    char *p = str;
-    int in_word = 0;
-    while (len >= 0) {
-        *p = (char)tolower((unsigned char)*p);
-        if (isalnum((unsigned char)*p)) {
-            if (!in_word) { in_word = 1; count+=4; }
-        } else {
-            in_word = 0;
-        }
-        p+=4;
-        len-=4;
+        p++;
+        len--;
     }
     return count;
 }
@@ -223,8 +205,6 @@ void score_term_over_docs(
 ){
     // The loop body is exact; loop_perforate will adjust the step in MLIR.
     for (int i = 0; i < num_docs; ++i) {
-        int tf_state = (int)strlen(lower_term);
-        if (tf_state > 16) tf_state = 16;
 
         int tf = tf_count_whole_word(lower_term, lower_corpus[i]);
 
@@ -236,68 +216,137 @@ void score_term_over_docs(
     }
 }
 
-// resize the string by taking every 2 words, until the resized buffer is full.
-// resized buffer is currently hardcoded to be 1/2 of the original size.
-char* approx_dup(char* s) {
-    size_t slen = strlen(s);
-    // Allocate slen/2 bytes for content + 1 for the null terminator
-    size_t resized_shape = (slen / 2) + 1;
-    char* ret = (char *) malloc(resized_shape);
-    
-    if (!ret) return NULL;
+void approx_score_term_over_docs_1(
+    const char *lower_term,
+    char **lower_corpus,
+    const double *doc_lengths,
+    double avg_doc_len,
+    double idf,
+    DocumentScore *scores,
+    int num_docs,
+    int state // caller passes something like num_docs
+){
+    // The loop body is exact; loop_perforate will adjust the step in MLIR.
+    for (int i = 0; i < num_docs; ++i) {
+        if(rand() % 100 < 10) continue;
+        int tf = tf_count_whole_word(lower_term, lower_corpus[i]);
 
-    int put = 1;
-    int n = 0; // pointer to resized string
-    int m = 0; // pointer to original string
-    
-    // Loop until the new buffer is full (leaving one spot for '\0')
-    while(n < resized_shape - 1 && m < slen) {
-        if(put) ret[n++] = s[m];
-        if(m < slen && s[m++] == ' ') put ^= 1; 
+        double numerator   = (double)tf * (K1 + 1.0);
+        double denominator = (double)tf + K1 * (1.0 - B + B * (doc_lengths[i] / avg_doc_len));
+        double term_score  = idf * (denominator > 0.0 ? (numerator / denominator) : 0.0);
+
+        scores[i].score += term_score;
     }
-
-    ret[n] = '\0'; 
-    
-    return ret;
 }
 
-// ---------- Main BM25 Ranking----------
-DocumentScore* rank_documents_bm25(char *query, char **corpus, int num_docs, int state) {
-    if (query == NULL || corpus == NULL || num_docs <= 0) return NULL;
+void approx_score_term_over_docs_2(
+    const char *lower_term,
+    char **lower_corpus,
+    const double *doc_lengths,
+    double avg_doc_len,
+    double idf,
+    DocumentScore *scores,
+    int num_docs,
+    int state // caller passes something like num_docs
+){
+    // The loop body is exact; loop_perforate will adjust the step in MLIR.
+    for (int i = 0; i < num_docs; ++i) {
+        if(rand() % 100 < 20) continue;
+        int tf = tf_count_whole_word(lower_term, lower_corpus[i]);
 
-    // 1) preprocess: lengths + lowercased docs
-    double *doc_lengths = (double *)malloc((size_t)num_docs * sizeof(double));
-    char  **lower_corpus = (char  **)malloc((size_t)num_docs * sizeof(char*));
-    if (!doc_lengths || !lower_corpus) {
-        free(doc_lengths); free(lower_corpus);
-        return NULL;
+        double numerator   = (double)tf * (K1 + 1.0);
+        double denominator = (double)tf + K1 * (1.0 - B + B * (doc_lengths[i] / avg_doc_len));
+        double term_score  = idf * (denominator > 0.0 ? (numerator / denominator) : 0.0);
+
+        scores[i].score += term_score;
     }
-    
-    double total_used_ms1 = 0;
-    double total_used_ms2 = 0;
-    double total_len = 0.0;
+}
+
+int lowering_corpus(char** corpus, char** lower_corpus, int* _num_docs, double *doc_lengths, DocumentScore *scores, int state) {
+    int num_docs = *_num_docs;
+    double total_len;
     for (int i = 0; i < num_docs; ++i) {
         char *doc_copy = strdup(corpus[i]);
         int len = strlen(doc_copy);
-        if (!doc_copy) {
-            for (int j = 0; j < i; ++j) free(lower_corpus[j]);
-            free(lower_corpus); free(doc_lengths);
-            return NULL;
-        }
         doc_lengths[i] = (double)count_and_lower_words(doc_copy, len, len);
         total_len     += doc_lengths[i];
         lower_corpus[i] = doc_copy;
+        scores[i].doc_index = i;
+        scores[i].score = 0.0;
     }
-    double avg_doc_len = total_len / (double)num_docs;
-    
-    // 2) scores
+    return total_len;
+}
+
+int approx_lowering_corpus_1(char** corpus, char** lower_corpus, int* _num_docs, double *doc_lengths, DocumentScore *scores, int state) {
+    int num_docs = 0;
+    double total_len;
+
+    for (int i = 0; i < *_num_docs; ++i) {
+        if(rand() % 100 < 10) continue;
+        char *doc_copy = strdup(corpus[i]);
+        int len = strlen(doc_copy);
+        doc_lengths[num_docs] = (double)count_and_lower_words(doc_copy, len, len);
+        total_len     += doc_lengths[num_docs];
+        lower_corpus[num_docs] = doc_copy;
+        scores[num_docs].doc_index = i;
+        scores[i].score = 0.0;
+        num_docs ++;
+    }
+    *_num_docs = num_docs;
+    return total_len;
+}
+
+int approx_lowering_corpus_2(char** corpus, char** lower_corpus, int* _num_docs, double *doc_lengths, DocumentScore *scores, int state) {
+    int num_docs = 0;
+    double total_len;
+
+    for (int i = 0; i < *_num_docs; ++i) {
+        if(rand() % 100 < 15) continue;
+        char *doc_copy = strdup(corpus[i]);
+        int len = strlen(doc_copy);
+        doc_lengths[num_docs] = (double)count_and_lower_words(doc_copy, len, len);
+        total_len     += doc_lengths[num_docs];
+        lower_corpus[num_docs] = doc_copy;
+        scores[num_docs].doc_index = i;
+        scores[i].score = 0.0;
+        num_docs ++;
+    }
+    *_num_docs = num_docs;
+    return total_len;
+}
+
+int approx_lowering_corpus_3(char** corpus, char** lower_corpus, int* _num_docs, double *doc_lengths, DocumentScore *scores, int state) {
+    int num_docs = 0;
+    double total_len;
+
+    for (int i = 0; i < *_num_docs; ++i) {
+        if(rand() % 100 < 20) continue;
+        char *doc_copy = strdup(corpus[i]);
+        int len = strlen(doc_copy);
+        doc_lengths[num_docs] = (double)count_and_lower_words(doc_copy, len, len);
+        total_len     += doc_lengths[num_docs];
+        lower_corpus[num_docs] = doc_copy;
+        scores[num_docs].doc_index = i;
+        scores[i].score = 0.0;
+        num_docs ++;
+    }
+    *_num_docs = num_docs;
+    return total_len;
+}
+
+DocumentScore* rank_documents_bm25(char *query, char **corpus, int _num_docs, int state) {
+    if (query == NULL || corpus == NULL || _num_docs <= 0) return NULL;
+    int num_docs = _num_docs;
+    // 1) preprocess: lengths + lowercased docs
+    double *doc_lengths = (double *)malloc((size_t)num_docs * sizeof(double));
+    char  **lower_corpus = (char  **)malloc((size_t)num_docs * sizeof(char*));
     DocumentScore *scores = (DocumentScore *)malloc((size_t)num_docs * sizeof(DocumentScore));
-    if (!scores) {
-        for (int i = 0; i < num_docs; ++i) free(lower_corpus[i]);
-        free(lower_corpus); free(doc_lengths);
-        return NULL;
-    }
-    for (int i = 0; i < num_docs; ++i) { scores[i].doc_index = i; scores[i].score = 0.0; }
+    double total_len = lowering_corpus(corpus, lower_corpus, &num_docs, doc_lengths, scores, state);
+    
+    double avg_doc_len = total_len / (double)num_docs;
+
+    printed_doc = num_docs;
+
 
     // 3) tokenize query (track uniques)
     char *query_copy = strdup(query);
@@ -339,7 +388,7 @@ DocumentScore* rank_documents_bm25(char *query, char **corpus, int num_docs, int
         if (!lower_term) continue;
         
         score_term_over_docs(lower_term, lower_corpus, doc_lengths,
-            avg_doc_len, idf, scores, num_docs, idf);
+            avg_doc_len, idf, scores, num_docs, idf * 10);
             
 
         free(lower_term);
@@ -351,147 +400,6 @@ DocumentScore* rank_documents_bm25(char *query, char **corpus, int num_docs, int
     for (int i = 0; i < num_docs; ++i) free(lower_corpus[i]);
     free(lower_corpus);
     free(doc_lengths);
-
-    qsort(scores, (size_t)num_docs, sizeof(DocumentScore), compare_scores);
-    return scores;
-}
-
-DocumentScore* approx_rank_documents_bm25_1(char *query, char **corpus, int num_docs, int state) {
-    if (query == NULL || corpus == NULL || num_docs <= 0) return NULL;
-
-    // 1) preprocess: lengths + lowercased docs
-    double *doc_lengths = (double *)malloc((size_t)num_docs * sizeof(double));
-    char  **lower_corpus = (char  **)malloc((size_t)num_docs * sizeof(char*));
-    
-    double total_len = 0.0;
-    for (int i = 0; i < num_docs; ++i) {
-        char *doc_copy = approx_dup(corpus[i]);
-        int len = strlen(doc_copy);
-        if (!doc_copy) {
-            for (int j = 0; j < i; ++j) free(lower_corpus[j]);
-            free(lower_corpus); free(doc_lengths);
-            return NULL;
-        }
-        doc_lengths[i] = (double)count_and_lower_words(doc_copy, len, len);
-        total_len     += doc_lengths[i];
-        lower_corpus[i] = doc_copy;
-    }
-    double avg_doc_len = total_len / (double)num_docs;
-    
-    // 2) scores
-    DocumentScore *scores = (DocumentScore *)malloc((size_t)num_docs * sizeof(DocumentScore));
-    
-    for (int i = 0; i < num_docs; ++i) { scores[i].doc_index = i; scores[i].score = 0.0; }
-
-    // 3) tokenize query (track uniques)
-    char *query_copy = strdup(query);
-
-    char *processed_terms[256];
-    int  processed_count = 0;
-
-    char *rest = query_copy;
-    const char *delims = " .,;:!?\"\'\n\t()[]{}<>";
-    while (1) {
-        char *term = strtok_r(rest, delims, &rest);
-        if (!term) break;
-        if (*term == '\0') continue;
-        
-        // de-dup (case-insensitive)
-        int seen = 0;
-        for (int k = 0; k < processed_count; ++k) {
-            if (compare_tokens(term, processed_terms[k]) == 0) { seen = 1; break; }
-        }
-        if (seen) continue;
-        
-        if (processed_count >= 256) break;
-        processed_terms[processed_count] = strdup(term);
-        if (!processed_terms[processed_count]) continue;
-        processed_count++;
-        
-        int df = calculate_df(term, lower_corpus, num_docs);
-        if (df == 0) continue;
-        double idf = calculate_idf(df, num_docs);
-        
-        // lowercase term once, then score across docs via KNOB 1
-        char *lower_term = lower_dup(term);
-        if (!lower_term) continue;
-        
-        int loop_state = num_docs; // caller-side state for loop_perforate
-        
-        score_term_over_docs(lower_term, lower_corpus, doc_lengths,
-            avg_doc_len, idf, scores, num_docs, loop_state);
-
-        free(lower_term);
-    }
-
-    qsort(scores, (size_t)num_docs, sizeof(DocumentScore), compare_scores);
-    return scores;
-}
-
-DocumentScore* approx_rank_documents_bm25_2(char *query, char **corpus, int num_docs, int state) {
-    if (query == NULL || corpus == NULL || num_docs <= 0) return NULL;
-
-    // 1) preprocess: lengths + lowercased docs
-    double *doc_lengths = (double *)malloc((size_t)num_docs * sizeof(double));
-    char  **lower_corpus = (char  **)malloc((size_t)num_docs * sizeof(char*));
-    
-    double total_len = 0.0;
-    for (int i = 0; i < num_docs; ++i) {
-        char *doc_copy = approx_dup(corpus[i]);
-        int len = strlen(doc_copy);
-        if(i & 1) {
-            doc_lengths[i] = (double)count_and_lower_words(doc_copy, len, len);
-        } else {
-            doc_lengths[i] = (double)approx_count_and_lower_words_1(doc_copy, len, len);
-        }
-        total_len     += doc_lengths[i];
-        lower_corpus[i] = doc_copy;
-    }
-    double avg_doc_len = total_len / (double)num_docs;
-    
-    // 2) scores
-    DocumentScore *scores = (DocumentScore *)malloc((size_t)num_docs * sizeof(DocumentScore));
-    
-    for (int i = 0; i < num_docs; ++i) { scores[i].doc_index = i; scores[i].score = 0.0; }
-
-    // 3) tokenize query (track uniques)
-    char *query_copy = strdup(query);
-
-    char *processed_terms[256];
-    int  processed_count = 0;
-
-    char *rest = query_copy;
-    const char *delims = " .,;:!?\"\'\n\t()[]{}<>";
-    while (1) {
-        char *term = strtok_r(rest, delims, &rest);
-        if (!term) break;
-        if (*term == '\0') continue;
-        
-        // de-dup (case-insensitive)
-        int seen = 0;
-        for (int k = 0; k < processed_count; ++k) {
-            if (compare_tokens(term, processed_terms[k]) == 0) { seen = 1; break; }
-        }
-        if (seen) continue;
-        
-        if (processed_count >= 256) break;
-        processed_terms[processed_count] = strdup(term);
-        if (!processed_terms[processed_count]) continue;
-        processed_count++;
-        
-        int df = calculate_df(term, lower_corpus, num_docs);
-        if (df == 0) continue;
-        double idf = calculate_idf(df, num_docs);
-        
-        // lowercase term once, then score across docs via KNOB 1
-        char *lower_term = lower_dup(term);
-        if (!lower_term) continue;
-        
-        score_term_over_docs(lower_term, lower_corpus, doc_lengths,
-            avg_doc_len, idf, scores, num_docs, df);
-
-        free(lower_term);
-    }
 
     qsort(scores, (size_t)num_docs, sizeof(DocumentScore), compare_scores);
     return scores;
@@ -518,7 +426,7 @@ int main(int argc, char **argv)
 
     char *documents_file = argv[1];
     char *query = argv[2];
-    int confidence = 3; // default confidence, used for knob state.
+    int confidence = rand() % 6; // default confidence, used for knob state.
     if(argc == 4) {
         confidence = atoi(argv[3]);
     }
@@ -553,7 +461,7 @@ int main(int argc, char **argv)
    if (ranked_scores)
    {
        printf("Ranking results:\n");
-       for (int i = 0; i < num_docs; ++i)
+       for (int i = 0; i < printed_doc; ++i)
        {
            int doc_index = ranked_scores[i].doc_index;
            printf("Rank %d: Doc %d (Score: %.4f) - \"%s\"\n",

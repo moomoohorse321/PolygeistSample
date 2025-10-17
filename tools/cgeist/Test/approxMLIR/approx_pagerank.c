@@ -202,10 +202,7 @@ double compute_sum_in_neighbors(const GraphCSR *G,
     }
     return sum_in;
 }
-
-/* Approximate alternative for Knob B (func_substitute).
-   Keep contract identical; still forwards state to nested knob if used. */
-double approx_update_node_rank(const GraphCSR *G,
+double approx_update_node_rank_1(const GraphCSR *G,
                                              const double *pr,
                                              int v,
                                              double alpha,
@@ -218,15 +215,41 @@ double approx_update_node_rank(const GraphCSR *G,
     int row_start = G->in_row[v];
     int row_end   = G->in_row[v+1];
     int span = row_end - row_start;
-    int stride = 2;
-    if (span <= 2) stride = 1; // avoid dropping all work on tiny rows
-    for (int idx = row_start; idx < row_end; idx += stride) {
+
+    for (int idx = row_start; idx < row_end; idx +=2) {
         int u = G->in_col[idx];
         int od = G->outdeg[u];
         if (od > 0) sum_in += pr[u] / (double)od;
     }
     // Re-scale the sampled sum back (very rough, but preserves expectation)
-    if (stride > 1) sum_in *= (double)stride;
+    sum_in = sum_in * 2;
+    return base + dp + alpha * sum_in;
+}
+
+/* Approximate alternative for Knob B (func_substitute).
+   Keep contract identical; still forwards state to nested knob if used. */
+
+double approx_update_node_rank_2(const GraphCSR *G,
+                                             const double *pr,
+                                             int v,
+                                             double alpha,
+                                             double base,
+                                             double dp, int indeg,
+                                             int state) {
+    /* Simple fast approximation: sample every other in-neighbor (stride 2).
+       NOTE: do not branch on `state` here; approxMLIR controls substitution. */
+    double sum_in = 0.0;
+    int row_start = G->in_row[v];
+    int row_end   = G->in_row[v+1];
+    int span = row_end - row_start;
+
+    for (int idx = row_start; idx < row_end; idx +=3) {
+        int u = G->in_col[idx];
+        int od = G->outdeg[u];
+        if (od > 0) sum_in += pr[u] / (double)od;
+    }
+    // Re-scale the sampled sum back (very rough, but preserves expectation)
+    sum_in = sum_in * 3;
     return base + dp + alpha * sum_in;
 }
 
@@ -245,7 +268,50 @@ double update_node_rank(const GraphCSR *G,
 
 /* =====================  WORKER / PARALLEL CODE  ===================== */
 
-void *approx_pagerank_worker_impl(void *argp, int state) {
+void *approx_pagerank_worker_impl_1(void *argp, int state) {
+    WorkerArgs *A = (WorkerArgs*)argp;
+    int tid = A->tid, P = A->P, N = A->N;
+    const GraphCSR *G = A->G;
+    const double alpha = A->alpha;
+    const double base = A->base;
+
+    int start = (tid * N) / P;
+    int end   = ((tid + 1) * N) / P;
+
+    for (int it = 0; it < A->iters; it ++) {
+        if(rand() % 100 < 25) continue;
+        // 1) Local dangling sum
+        double local_dangling_sum = 0.0;
+        for (int u = start; u < end; u++) {
+            if (G->outdeg[u] == 0) local_dangling_sum += A->pr[u];
+        }
+        A->dangling_sums[tid] = local_dangling_sum;
+
+        // 2) Reduce to shared dp = alpha * (sum dangling) / N
+        if (tid == 0) {
+            double total = 0.0;
+            for (int t = 0; t < P; t++) total += A->dangling_sums[t];
+            *(A->dp_shared) = alpha * (total / (double)N);
+        }
+        double dp = *(A->dp_shared);
+
+        // 3) Compute next PR for our slice using the knobbed update function
+        for (int v = start; v < end; v++) {
+            int indeg = G->in_row[v+1] - G->in_row[v];
+            // Exact path (approxMLIR may substitute this with approx_update_node_rank)
+            A->pr_next[v] = update_node_rank(G, A->pr, v, alpha, base, dp, indeg, it);
+        }
+
+        // 5) Commit next -> current for our slice
+        for (int v = start; v < end; v++) {
+            ((double*)A->pr)[v] = A->pr_next[v];
+        }
+    }
+
+    return NULL;
+}
+
+void *approx_pagerank_worker_impl_2(void *argp, int state) {
     WorkerArgs *A = (WorkerArgs*)argp;
     int tid = A->tid, P = A->P, N = A->N;
     const GraphCSR *G = A->G;
@@ -391,6 +457,7 @@ int main(int argc, char **argv) {
     };
 
     int opt, idx, confidence;
+    confidence = rand() % 6;
     while ((opt = getopt_long(argc, argv, "e:m:f:t:n:d:i:a:s:ph", long_opts, &idx)) != -1) {
         switch (opt) {
             case 'e': confidence = atoi(optarg); break;
