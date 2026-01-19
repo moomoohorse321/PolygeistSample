@@ -20,7 +20,6 @@ int num_documents = 0;
 float query_embedding[EMBEDDING_DIM];
 
 
-// Knob 1
 int parse_embedding(const char *embedding_str, float *embedding, int state) {
     const char *start = strchr(embedding_str, '[');
     if (!start) return 0;
@@ -139,7 +138,6 @@ float cosine_similarity_core(const float *a, const float *b) {
     return dot_product / (norm_a * norm_b);
 }
 
-// knob 2
 void approx_compute_similarities_with_state_1(int cos_state) {
     // ADDED: Create a temporary array to hold the parsed float values.
     float doc_embedding_floats[EMBEDDING_DIM];

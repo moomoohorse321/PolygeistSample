@@ -93,22 +93,6 @@ typedef struct dim_str
 // -------------------- utilities (no knobs) --------------------
 static int isInteger(const char *s){ if(!s||!*s) return 0; for(;*s;++s){ if(*s<'0'||*s>'9') return 0; } return 1; }
 
-// -------------------- helper to build states (caller-side only) --------------------
-
-static inline int state_self_from_qi(fp qi){
-    // |q_i| in ~[0.1,1.0] -> [10,100]
-    if (qi < (fp)0) qi = -qi;
-    fp scaled = (fp)100.0 * qi;
-    if (scaled > (fp)100.0) scaled = (fp)100.0;
-    int s = (int)(scaled + (fp)0.5);
-    return s;
-}
-static inline int state_neigh_from_nn(int nn){
-    // neighbor count 0..26
-    if (nn < 0) nn = 0; if (nn > 26) nn = 26;
-    return nn;
-}
-
 // -------------------- pair interaction (func_substitute knob) --------------------
 
 
@@ -271,12 +255,19 @@ int main(int argc, char *argv[]) {
     printf("WG size of kernel = %d\n", NUMBER_THREADS);
 
     dim_cpu.boxes1d_arg = 1;
+    int seed = 2;
     if (argc == 3) {
         if (strcmp(argv[1], "-boxes1d") == 0 && isInteger(argv[2])) {
             dim_cpu.boxes1d_arg = atoi(argv[2]);
             if (dim_cpu.boxes1d_arg <= 0) { printf("ERROR: -boxes1d > 0\n"); return 1; }
         } else { printf("ERROR: Usage: %s -boxes1d <number>\n", argv[0]); return 1; }
-    } else { printf("Usage: %s -boxes1d <number>\n", argv[0]); return 1; }
+    } else if (argc == 4) {
+        if (strcmp(argv[1], "-boxes1d") == 0 && isInteger(argv[2])) {
+            dim_cpu.boxes1d_arg = atoi(argv[2]);
+            seed= atoi(argv[3]);
+            if (dim_cpu.boxes1d_arg <= 0) { printf("ERROR: -boxes1d > 0\n"); return 1; }
+        } else { printf("ERROR: Usage: %s -boxes1d <number>\n", argv[0]); return 1; }
+    }else { printf("Usage: %s -boxes1d <number>\n", argv[0]); return 1; }
 
     printf("Configuration: boxes1d = %d\n", dim_cpu.boxes1d_arg);
 
@@ -315,7 +306,7 @@ int main(int argc, char *argv[]) {
     }
 
     // init fields
-    srand(2);
+    srand(seed);
     for (size_t i=0;i<(size_t)dim_cpu.space_elem;i++){
       rv_cpu[i].v=(fp)((rand()%10+1)/10.0);
       rv_cpu[i].x=(fp)((rand()%10+1)/10.0);

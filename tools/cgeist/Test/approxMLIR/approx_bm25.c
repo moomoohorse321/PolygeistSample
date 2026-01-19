@@ -282,7 +282,7 @@ int approx_lowering_corpus_1(char** corpus, char** lower_corpus, int* _num_docs,
     double total_len;
 
     for (int i = 0; i < *_num_docs; ++i) {
-        if(rand() % 100 < 10) continue;
+        if(rand() % 100 < 15) continue;
         char *doc_copy = strdup(corpus[i]);
         int len = strlen(doc_copy);
         doc_lengths[num_docs] = (double)count_and_lower_words(doc_copy, len, len);
@@ -301,7 +301,7 @@ int approx_lowering_corpus_2(char** corpus, char** lower_corpus, int* _num_docs,
     double total_len;
 
     for (int i = 0; i < *_num_docs; ++i) {
-        if(rand() % 100 < 15) continue;
+        if(rand() % 100 < 30) continue;
         char *doc_copy = strdup(corpus[i]);
         int len = strlen(doc_copy);
         doc_lengths[num_docs] = (double)count_and_lower_words(doc_copy, len, len);
@@ -320,7 +320,7 @@ int approx_lowering_corpus_3(char** corpus, char** lower_corpus, int* _num_docs,
     double total_len;
 
     for (int i = 0; i < *_num_docs; ++i) {
-        if(rand() % 100 < 20) continue;
+        if(rand() % 100 < 50) continue;
         char *doc_copy = strdup(corpus[i]);
         int len = strlen(doc_copy);
         doc_lengths[num_docs] = (double)count_and_lower_words(doc_copy, len, len);

@@ -1,9 +1,10 @@
-module attributes {dlti.dl_spec = #dlti.dl_spec<#dlti.dl_entry<f64, dense<64> : vector<2xi32>>, #dlti.dl_entry<f16, dense<16> : vector<2xi32>>, #dlti.dl_entry<!llvm.ptr<270>, dense<32> : vector<4xi32>>, #dlti.dl_entry<f128, dense<128> : vector<2xi32>>, #dlti.dl_entry<i8, dense<8> : vector<2xi32>>, #dlti.dl_entry<i16, dense<16> : vector<2xi32>>, #dlti.dl_entry<i32, dense<32> : vector<2xi32>>, #dlti.dl_entry<i1, dense<8> : vector<2xi32>>, #dlti.dl_entry<!llvm.ptr, dense<64> : vector<4xi32>>, #dlti.dl_entry<!llvm.ptr<272>, dense<64> : vector<4xi32>>, #dlti.dl_entry<!llvm.ptr<271>, dense<32> : vector<4xi32>>, #dlti.dl_entry<i64, dense<64> : vector<2xi32>>, #dlti.dl_entry<f80, dense<128> : vector<2xi32>>, #dlti.dl_entry<"dlti.endianness", "little">, #dlti.dl_entry<"dlti.stack_alignment", 128 : i32>>, llvm.data_layout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128", llvm.target_triple = "x86_64-unknown-linux-gnu", "polygeist.target-cpu" = "x86-64", "polygeist.target-features" = "+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87", "polygeist.tune-cpu" = "generic"} {
-  llvm.mlir.global internal constant @str11("Elapsed %.3f ms\0A\00") {addr_space = 0 : i32}
-  llvm.mlir.global internal constant @str10("Error: No documents loaded.\0A\00") {addr_space = 0 : i32}
-  llvm.mlir.global internal constant @str9("Error: Failed to parse query embedding\0A\00") {addr_space = 0 : i32}
-  llvm.mlir.global internal constant @str8("[%s]\00") {addr_space = 0 : i32}
+module attributes {dlti.dl_spec = #dlti.dl_spec<#dlti.dl_entry<f128, dense<128> : vector<2xi32>>, #dlti.dl_entry<!llvm.ptr<270>, dense<32> : vector<4xi32>>, #dlti.dl_entry<f64, dense<64> : vector<2xi32>>, #dlti.dl_entry<f16, dense<16> : vector<2xi32>>, #dlti.dl_entry<i16, dense<16> : vector<2xi32>>, #dlti.dl_entry<i32, dense<32> : vector<2xi32>>, #dlti.dl_entry<i1, dense<8> : vector<2xi32>>, #dlti.dl_entry<i8, dense<8> : vector<2xi32>>, #dlti.dl_entry<!llvm.ptr, dense<64> : vector<4xi32>>, #dlti.dl_entry<f80, dense<128> : vector<2xi32>>, #dlti.dl_entry<i64, dense<64> : vector<2xi32>>, #dlti.dl_entry<!llvm.ptr<271>, dense<32> : vector<4xi32>>, #dlti.dl_entry<!llvm.ptr<272>, dense<64> : vector<4xi32>>, #dlti.dl_entry<"dlti.endianness", "little">, #dlti.dl_entry<"dlti.stack_alignment", 128 : i32>>, llvm.data_layout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128", llvm.target_triple = "x86_64-unknown-linux-gnu", "polygeist.target-cpu" = "x86-64", "polygeist.target-features" = "+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87", "polygeist.tune-cpu" = "generic"} {
+  llvm.mlir.global internal constant @str12("Elapsed %.3f ms\0A\00") {addr_space = 0 : i32}
+  llvm.mlir.global internal constant @str11("Error: No documents loaded.\0A\00") {addr_space = 0 : i32}
+  llvm.mlir.global internal constant @str10("Error: Failed to parse query embedding\0A\00") {addr_space = 0 : i32}
+  llvm.mlir.global internal constant @str9("[%s]\00") {addr_space = 0 : i32}
   llvm.func @sprintf(!llvm.ptr, !llvm.ptr, ...) -> i32
+  llvm.mlir.global internal constant @str8("confidence = %d\0A\00") {addr_space = 0 : i32}
   llvm.mlir.global internal constant @str7("Document embeddings should be provided via stdin\0A\00") {addr_space = 0 : i32}
   llvm.mlir.global internal constant @str6("Query embedding should be comma-separated values\0A\00") {addr_space = 0 : i32}
   llvm.mlir.global internal constant @str5("Usage: %s <query_embedding> [top_k]\0A\00") {addr_space = 0 : i32}
@@ -129,7 +130,7 @@ module attributes {dlti.dl_spec = #dlti.dl_spec<#dlti.dl_entry<f64, dense<64> : 
           scf.condition(%28) %arg3, %arg4 : i32, memref<?xi8>
         } do {
         ^bb0(%arg3: i32, %arg4: memref<?xi8>):
-          affine.store %c0_i8, %arg4[6] : memref<?xi8>
+          affine.store %c0_i8, %arg4[8] : memref<?xi8>
           %25 = arith.index_cast %arg3 : i32 to index
           %26 = func.call @atof(%arg4) : (memref<?xi8>) -> f64
           %27 = arith.truncf %26 : f64 to f32
@@ -192,7 +193,7 @@ module attributes {dlti.dl_spec = #dlti.dl_spec<#dlti.dl_entry<f64, dense<64> : 
           scf.condition(%28) %arg3, %arg4 : i32, memref<?xi8>
         } do {
         ^bb0(%arg3: i32, %arg4: memref<?xi8>):
-          affine.store %c0_i8, %arg4[4] : memref<?xi8>
+          affine.store %c0_i8, %arg4[5] : memref<?xi8>
           %25 = arith.index_cast %arg3 : i32 to index
           %26 = func.call @atof(%arg4) : (memref<?xi8>) -> f64
           %27 = arith.truncf %26 : f64 to f32
@@ -401,8 +402,9 @@ module attributes {dlti.dl_spec = #dlti.dl_spec<#dlti.dl_entry<f64, dense<64> : 
   func.func @approx_compute_similarities_with_state_1(%arg0: i32) attributes {llvm.linkage = #llvm.linkage<external>} {
     %c1_i32 = arith.constant 1 : i32
     %cst = arith.constant -2.000000e+00 : f32
-    %c4_i32 = arith.constant 4 : i32
-    %c80_i32 = arith.constant 80 : i32
+    %c-1_i32 = arith.constant -1 : i32
+    %c10_i32 = arith.constant 10 : i32
+    %c95_i32 = arith.constant 95 : i32
     %c100_i32 = arith.constant 100 : i32
     %c0_i32 = arith.constant 0 : i32
     %alloca = memref.alloca() : memref<384xf32>
@@ -415,7 +417,7 @@ module attributes {dlti.dl_spec = #dlti.dl_spec<#dlti.dl_entry<f64, dense<64> : 
     ^bb0(%arg1: i32):
       %2 = func.call @rand() : () -> i32
       %3 = arith.remsi %2, %c100_i32 : i32
-      %4 = arith.cmpi slt, %3, %c80_i32 : i32
+      %4 = arith.cmpi slt, %3, %c95_i32 : i32
       scf.if %4 {
         %6 = memref.get_global @documents : memref<100000x!llvm.struct<(i32, memref<?xi8>, array<256 x i8>, f32)>>
         %7 = arith.index_cast %arg1 : i32 to index
@@ -428,7 +430,7 @@ module attributes {dlti.dl_spec = #dlti.dl_spec<#dlti.dl_entry<f64, dense<64> : 
         %14 = llvm.load %13 : !llvm.ptr -> memref<?xi8>
         %cast = memref.cast %alloca : memref<384xf32> to memref<?xf32>
         %15 = func.call @rand() : () -> i32
-        %16 = arith.remsi %15, %c4_i32 : i32
+        %16 = arith.remsi %15, %c10_i32 : i32
         %17 = func.call @parse_embedding(%14, %cast, %16) : (memref<?xi8>, memref<?xf32>, i32) -> i32
         %18 = arith.cmpi ne, %17, %c0_i32 : i32
         scf.if %18 {
@@ -438,8 +440,7 @@ module attributes {dlti.dl_spec = #dlti.dl_spec<#dlti.dl_entry<f64, dense<64> : 
           %21 = func.call @cosine_similarity_core(%cast_0, %cast) : (memref<?xf32>, memref<?xf32>) -> f32
           llvm.store %21, %19 : f32, !llvm.ptr
         } else {
-          %19 = llvm.getelementptr %12[0, 3] : (!llvm.ptr) -> !llvm.ptr, !llvm.struct<(i32, memref<?xi8>, array<256 x i8>, f32)>
-          llvm.store %cst, %19 : f32, !llvm.ptr
+          func.call @exit(%c-1_i32) : (i32) -> ()
         }
       } else {
         %6 = memref.get_global @documents : memref<100000x!llvm.struct<(i32, memref<?xi8>, array<256 x i8>, f32)>>
@@ -458,11 +459,13 @@ module attributes {dlti.dl_spec = #dlti.dl_spec<#dlti.dl_entry<f64, dense<64> : 
     return
   }
   func.func private @rand() -> i32 attributes {llvm.linkage = #llvm.linkage<external>}
+  func.func private @exit(i32) attributes {llvm.linkage = #llvm.linkage<external>}
   func.func @approx_compute_similarities_with_state_2(%arg0: i32) attributes {llvm.linkage = #llvm.linkage<external>} {
     %c1_i32 = arith.constant 1 : i32
     %cst = arith.constant -2.000000e+00 : f32
-    %c4_i32 = arith.constant 4 : i32
-    %c60_i32 = arith.constant 60 : i32
+    %c-1_i32 = arith.constant -1 : i32
+    %c10_i32 = arith.constant 10 : i32
+    %c90_i32 = arith.constant 90 : i32
     %c100_i32 = arith.constant 100 : i32
     %c0_i32 = arith.constant 0 : i32
     %alloca = memref.alloca() : memref<384xf32>
@@ -475,7 +478,7 @@ module attributes {dlti.dl_spec = #dlti.dl_spec<#dlti.dl_entry<f64, dense<64> : 
     ^bb0(%arg1: i32):
       %2 = func.call @rand() : () -> i32
       %3 = arith.remsi %2, %c100_i32 : i32
-      %4 = arith.cmpi slt, %3, %c60_i32 : i32
+      %4 = arith.cmpi slt, %3, %c90_i32 : i32
       scf.if %4 {
         %6 = memref.get_global @documents : memref<100000x!llvm.struct<(i32, memref<?xi8>, array<256 x i8>, f32)>>
         %7 = arith.index_cast %arg1 : i32 to index
@@ -488,7 +491,7 @@ module attributes {dlti.dl_spec = #dlti.dl_spec<#dlti.dl_entry<f64, dense<64> : 
         %14 = llvm.load %13 : !llvm.ptr -> memref<?xi8>
         %cast = memref.cast %alloca : memref<384xf32> to memref<?xf32>
         %15 = func.call @rand() : () -> i32
-        %16 = arith.remsi %15, %c4_i32 : i32
+        %16 = arith.remsi %15, %c10_i32 : i32
         %17 = func.call @parse_embedding(%14, %cast, %16) : (memref<?xi8>, memref<?xf32>, i32) -> i32
         %18 = arith.cmpi ne, %17, %c0_i32 : i32
         scf.if %18 {
@@ -498,67 +501,7 @@ module attributes {dlti.dl_spec = #dlti.dl_spec<#dlti.dl_entry<f64, dense<64> : 
           %21 = func.call @cosine_similarity_core(%cast_0, %cast) : (memref<?xf32>, memref<?xf32>) -> f32
           llvm.store %21, %19 : f32, !llvm.ptr
         } else {
-          %19 = llvm.getelementptr %12[0, 3] : (!llvm.ptr) -> !llvm.ptr, !llvm.struct<(i32, memref<?xi8>, array<256 x i8>, f32)>
-          llvm.store %cst, %19 : f32, !llvm.ptr
-        }
-      } else {
-        %6 = memref.get_global @documents : memref<100000x!llvm.struct<(i32, memref<?xi8>, array<256 x i8>, f32)>>
-        %7 = arith.index_cast %arg1 : i32 to index
-        %8 = "polygeist.typeSize"() <{source = !llvm.struct<(i32, memref<?xi8>, array<256 x i8>, f32)>}> : () -> index
-        %9 = arith.muli %7, %8 : index
-        %10 = arith.index_cast %9 : index to i64
-        %11 = "polygeist.memref2pointer"(%6) : (memref<100000x!llvm.struct<(i32, memref<?xi8>, array<256 x i8>, f32)>>) -> !llvm.ptr
-        %12 = llvm.getelementptr %11[%10] : (!llvm.ptr, i64) -> !llvm.ptr, i8
-        %13 = llvm.getelementptr %12[0, 3] : (!llvm.ptr) -> !llvm.ptr, !llvm.struct<(i32, memref<?xi8>, array<256 x i8>, f32)>
-        llvm.store %cst, %13 : f32, !llvm.ptr
-      }
-      %5 = arith.addi %arg1, %c1_i32 : i32
-      scf.yield %5 : i32
-    }
-    return
-  }
-  func.func @approx_compute_similarities_with_state_3(%arg0: i32) attributes {llvm.linkage = #llvm.linkage<external>} {
-    %c1_i32 = arith.constant 1 : i32
-    %cst = arith.constant -2.000000e+00 : f32
-    %c4_i32 = arith.constant 4 : i32
-    %c40_i32 = arith.constant 40 : i32
-    %c100_i32 = arith.constant 100 : i32
-    %c0_i32 = arith.constant 0 : i32
-    %alloca = memref.alloca() : memref<384xf32>
-    %0 = memref.get_global @num_documents : memref<1xi32>
-    %1 = scf.while (%arg1 = %c0_i32) : (i32) -> i32 {
-      %2 = affine.load %0[0] : memref<1xi32>
-      %3 = arith.cmpi slt, %arg1, %2 : i32
-      scf.condition(%3) %arg1 : i32
-    } do {
-    ^bb0(%arg1: i32):
-      %2 = func.call @rand() : () -> i32
-      %3 = arith.remsi %2, %c100_i32 : i32
-      %4 = arith.cmpi slt, %3, %c40_i32 : i32
-      scf.if %4 {
-        %6 = memref.get_global @documents : memref<100000x!llvm.struct<(i32, memref<?xi8>, array<256 x i8>, f32)>>
-        %7 = arith.index_cast %arg1 : i32 to index
-        %8 = "polygeist.typeSize"() <{source = !llvm.struct<(i32, memref<?xi8>, array<256 x i8>, f32)>}> : () -> index
-        %9 = arith.muli %7, %8 : index
-        %10 = arith.index_cast %9 : index to i64
-        %11 = "polygeist.memref2pointer"(%6) : (memref<100000x!llvm.struct<(i32, memref<?xi8>, array<256 x i8>, f32)>>) -> !llvm.ptr
-        %12 = llvm.getelementptr %11[%10] : (!llvm.ptr, i64) -> !llvm.ptr, i8
-        %13 = llvm.getelementptr %12[0, 1] : (!llvm.ptr) -> !llvm.ptr, !llvm.struct<(i32, memref<?xi8>, array<256 x i8>, f32)>
-        %14 = llvm.load %13 : !llvm.ptr -> memref<?xi8>
-        %cast = memref.cast %alloca : memref<384xf32> to memref<?xf32>
-        %15 = func.call @rand() : () -> i32
-        %16 = arith.remsi %15, %c4_i32 : i32
-        %17 = func.call @parse_embedding(%14, %cast, %16) : (memref<?xi8>, memref<?xf32>, i32) -> i32
-        %18 = arith.cmpi ne, %17, %c0_i32 : i32
-        scf.if %18 {
-          %19 = llvm.getelementptr %12[0, 3] : (!llvm.ptr) -> !llvm.ptr, !llvm.struct<(i32, memref<?xi8>, array<256 x i8>, f32)>
-          %20 = memref.get_global @query_embedding : memref<384xf32>
-          %cast_0 = memref.cast %20 : memref<384xf32> to memref<?xf32>
-          %21 = func.call @cosine_similarity_core(%cast_0, %cast) : (memref<?xf32>, memref<?xf32>) -> f32
-          llvm.store %21, %19 : f32, !llvm.ptr
-        } else {
-          %19 = llvm.getelementptr %12[0, 3] : (!llvm.ptr) -> !llvm.ptr, !llvm.struct<(i32, memref<?xi8>, array<256 x i8>, f32)>
-          llvm.store %cst, %19 : f32, !llvm.ptr
+          func.call @exit(%c-1_i32) : (i32) -> ()
         }
       } else {
         %6 = memref.get_global @documents : memref<100000x!llvm.struct<(i32, memref<?xi8>, array<256 x i8>, f32)>>
@@ -578,8 +521,8 @@ module attributes {dlti.dl_spec = #dlti.dl_spec<#dlti.dl_entry<f64, dense<64> : 
   }
   func.func @compute_similarities_with_state(%arg0: i32) attributes {llvm.linkage = #llvm.linkage<external>} {
     %c1_i32 = arith.constant 1 : i32
-    %cst = arith.constant -2.000000e+00 : f32
-    %c4_i32 = arith.constant 4 : i32
+    %c-1_i32 = arith.constant -1 : i32
+    %c10_i32 = arith.constant 10 : i32
     %c0_i32 = arith.constant 0 : i32
     %alloca = memref.alloca() : memref<384xf32>
     %0 = memref.get_global @num_documents : memref<1xi32>
@@ -600,7 +543,7 @@ module attributes {dlti.dl_spec = #dlti.dl_spec<#dlti.dl_entry<f64, dense<64> : 
       %9 = llvm.getelementptr %8[0, 1] : (!llvm.ptr) -> !llvm.ptr, !llvm.struct<(i32, memref<?xi8>, array<256 x i8>, f32)>
       %10 = llvm.load %9 : !llvm.ptr -> memref<?xi8>
       %11 = func.call @rand() : () -> i32
-      %12 = arith.remsi %11, %c4_i32 : i32
+      %12 = arith.remsi %11, %c10_i32 : i32
       %13 = func.call @parse_embedding(%10, %cast, %12) : (memref<?xi8>, memref<?xf32>, i32) -> i32
       %14 = arith.cmpi ne, %13, %c0_i32 : i32
       scf.if %14 {
@@ -610,8 +553,7 @@ module attributes {dlti.dl_spec = #dlti.dl_spec<#dlti.dl_entry<f64, dense<64> : 
         %18 = func.call @cosine_similarity_core(%cast_0, %cast) : (memref<?xf32>, memref<?xf32>) -> f32
         llvm.store %18, %16 : f32, !llvm.ptr
       } else {
-        %16 = llvm.getelementptr %8[0, 3] : (!llvm.ptr) -> !llvm.ptr, !llvm.struct<(i32, memref<?xi8>, array<256 x i8>, f32)>
-        llvm.store %cst, %16 : f32, !llvm.ptr
+        func.call @exit(%c-1_i32) : (i32) -> ()
       }
       %15 = arith.addi %arg1, %c1_i32 : i32
       scf.yield %15 : i32
@@ -700,6 +642,7 @@ module attributes {dlti.dl_spec = #dlti.dl_spec<#dlti.dl_entry<f64, dense<64> : 
     %cst_0 = arith.constant 1.000000e+03 : f64
     %c0_i32 = arith.constant 0 : i32
     %c3_i64 = arith.constant 3 : i64
+    %c5_i32 = arith.constant 5 : i32
     %c3_i32 = arith.constant 3 : i32
     %c10_i32 = arith.constant 10 : i32
     %c1_i32 = arith.constant 1 : i32
@@ -736,65 +679,68 @@ module attributes {dlti.dl_spec = #dlti.dl_spec<#dlti.dl_entry<f64, dense<64> : 
       %6 = affine.load %arg1[1] : memref<?xmemref<?xi8>>
       %7 = arith.cmpi sgt, %arg0, %c2_i32 : i32
       %8 = scf.if %7 -> (i32) {
-        %26 = affine.load %arg1[2] : memref<?xmemref<?xi8>>
-        %27 = func.call @atoi(%26) : (memref<?xi8>) -> i32
-        scf.yield %27 : i32
+        %29 = affine.load %arg1[2] : memref<?xmemref<?xi8>>
+        %30 = func.call @atoi(%29) : (memref<?xi8>) -> i32
+        scf.yield %30 : i32
       } else {
         scf.yield %c10_i32 : i32
       }
       %9 = arith.cmpi sgt, %arg0, %c3_i32 : i32
       %10 = scf.if %9 -> (i32) {
-        %26 = affine.load %arg1[3] : memref<?xmemref<?xi8>>
-        %27 = func.call @atoi(%26) : (memref<?xi8>) -> i32
-        scf.yield %27 : i32
+        %29 = affine.load %arg1[3] : memref<?xmemref<?xi8>>
+        %30 = func.call @atoi(%29) : (memref<?xi8>) -> i32
+        scf.yield %30 : i32
       } else {
-        %26 = func.call @rand() : () -> i32
-        %27 = arith.remsi %26, %c3_i32 : i32
-        %28 = arith.addi %27, %c1_i32 : i32
-        scf.yield %28 : i32
+        %29 = func.call @rand() : () -> i32
+        %30 = arith.remsi %29, %c5_i32 : i32
+        %31 = arith.addi %30, %c1_i32 : i32
+        scf.yield %31 : i32
       }
-      %11 = "polygeist.memref2pointer"(%6) : (memref<?xi8>) -> !llvm.ptr
-      %12 = func.call @strlen(%11) : (!llvm.ptr) -> i64
-      %13 = arith.addi %12, %c3_i64 : i64
-      %14 = arith.index_cast %13 : i64 to index
-      %alloca_2 = memref.alloca(%14) : memref<?xi8>
-      %15 = "polygeist.memref2pointer"(%alloca_2) : (memref<?xi8>) -> !llvm.ptr
-      %16 = llvm.mlir.addressof @str8 : !llvm.ptr
-      %17 = llvm.getelementptr %16[0, 0] : (!llvm.ptr) -> !llvm.ptr, !llvm.array<5 x i8>
-      %18 = "polygeist.memref2pointer"(%6) : (memref<?xi8>) -> !llvm.ptr
-      %19 = llvm.call @sprintf(%15, %17, %18) vararg(!llvm.func<i32 (ptr, ptr, ...)>) : (!llvm.ptr, !llvm.ptr, !llvm.ptr) -> i32
-      %20 = memref.get_global @query_embedding : memref<384xf32>
-      %cast = memref.cast %20 : memref<384xf32> to memref<?xf32>
-      %21 = func.call @parse_embedding(%alloca_2, %cast, %c0_i32) : (memref<?xi8>, memref<?xf32>, i32) -> i32
-      %22 = arith.cmpi eq, %21, %c0_i32 : i32
-      %23 = arith.cmpi ne, %21, %c0_i32 : i32
-      %24 = arith.select %22, %c1_i32, %3 : i32
-      scf.if %22 {
-        %26 = llvm.mlir.addressof @stderr : !llvm.ptr
-        %27 = llvm.load %26 : !llvm.ptr -> memref<?x!llvm.struct<(i32, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, i32, i32, i64, i16, i8, array<1 x i8>, ptr, i64, ptr, ptr, ptr, ptr, i64, i32, array<20 x i8>)>>
-        %28 = "polygeist.memref2pointer"(%27) : (memref<?x!llvm.struct<(i32, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, i32, i32, i64, i16, i8, array<1 x i8>, ptr, i64, ptr, ptr, ptr, ptr, i64, i32, array<20 x i8>)>>) -> !llvm.ptr
-        %29 = llvm.mlir.addressof @str9 : !llvm.ptr
-        %30 = llvm.getelementptr %29[0, 0] : (!llvm.ptr) -> !llvm.ptr, !llvm.array<40 x i8>
-        %31 = llvm.call @fprintf(%28, %30) vararg(!llvm.func<i32 (ptr, ptr, ...)>) : (!llvm.ptr, !llvm.ptr) -> i32
+      %11 = llvm.mlir.addressof @str8 : !llvm.ptr
+      %12 = llvm.getelementptr %11[0, 0] : (!llvm.ptr) -> !llvm.ptr, !llvm.array<17 x i8>
+      %13 = llvm.call @printf(%12, %10) vararg(!llvm.func<i32 (ptr, ...)>) : (!llvm.ptr, i32) -> i32
+      %14 = "polygeist.memref2pointer"(%6) : (memref<?xi8>) -> !llvm.ptr
+      %15 = func.call @strlen(%14) : (!llvm.ptr) -> i64
+      %16 = arith.addi %15, %c3_i64 : i64
+      %17 = arith.index_cast %16 : i64 to index
+      %alloca_2 = memref.alloca(%17) : memref<?xi8>
+      %18 = "polygeist.memref2pointer"(%alloca_2) : (memref<?xi8>) -> !llvm.ptr
+      %19 = llvm.mlir.addressof @str9 : !llvm.ptr
+      %20 = llvm.getelementptr %19[0, 0] : (!llvm.ptr) -> !llvm.ptr, !llvm.array<5 x i8>
+      %21 = "polygeist.memref2pointer"(%6) : (memref<?xi8>) -> !llvm.ptr
+      %22 = llvm.call @sprintf(%18, %20, %21) vararg(!llvm.func<i32 (ptr, ptr, ...)>) : (!llvm.ptr, !llvm.ptr, !llvm.ptr) -> i32
+      %23 = memref.get_global @query_embedding : memref<384xf32>
+      %cast = memref.cast %23 : memref<384xf32> to memref<?xf32>
+      %24 = func.call @parse_embedding(%alloca_2, %cast, %c0_i32) : (memref<?xi8>, memref<?xf32>, i32) -> i32
+      %25 = arith.cmpi eq, %24, %c0_i32 : i32
+      %26 = arith.cmpi ne, %24, %c0_i32 : i32
+      %27 = arith.select %25, %c1_i32, %3 : i32
+      scf.if %25 {
+        %29 = llvm.mlir.addressof @stderr : !llvm.ptr
+        %30 = llvm.load %29 : !llvm.ptr -> memref<?x!llvm.struct<(i32, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, i32, i32, i64, i16, i8, array<1 x i8>, ptr, i64, ptr, ptr, ptr, ptr, i64, i32, array<20 x i8>)>>
+        %31 = "polygeist.memref2pointer"(%30) : (memref<?x!llvm.struct<(i32, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, i32, i32, i64, i16, i8, array<1 x i8>, ptr, i64, ptr, ptr, ptr, ptr, i64, i32, array<20 x i8>)>>) -> !llvm.ptr
+        %32 = llvm.mlir.addressof @str10 : !llvm.ptr
+        %33 = llvm.getelementptr %32[0, 0] : (!llvm.ptr) -> !llvm.ptr, !llvm.array<40 x i8>
+        %34 = llvm.call @fprintf(%31, %33) vararg(!llvm.func<i32 (ptr, ptr, ...)>) : (!llvm.ptr, !llvm.ptr) -> i32
       }
-      %25:2 = scf.if %23 -> (i1, i32) {
-        %26 = func.call @load_document_embeddings() : () -> i32
-        %27 = arith.cmpi eq, %26, %c0_i32 : i32
-        %28 = arith.cmpi ne, %26, %c0_i32 : i32
-        %29 = arith.select %27, %c1_i32, %24 : i32
-        scf.if %27 {
-          %30 = llvm.mlir.addressof @stderr : !llvm.ptr
-          %31 = llvm.load %30 : !llvm.ptr -> memref<?x!llvm.struct<(i32, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, i32, i32, i64, i16, i8, array<1 x i8>, ptr, i64, ptr, ptr, ptr, ptr, i64, i32, array<20 x i8>)>>
-          %32 = "polygeist.memref2pointer"(%31) : (memref<?x!llvm.struct<(i32, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, i32, i32, i64, i16, i8, array<1 x i8>, ptr, i64, ptr, ptr, ptr, ptr, i64, i32, array<20 x i8>)>>) -> !llvm.ptr
-          %33 = llvm.mlir.addressof @str10 : !llvm.ptr
-          %34 = llvm.getelementptr %33[0, 0] : (!llvm.ptr) -> !llvm.ptr, !llvm.array<29 x i8>
-          %35 = llvm.call @fprintf(%32, %34) vararg(!llvm.func<i32 (ptr, ptr, ...)>) : (!llvm.ptr, !llvm.ptr) -> i32
+      %28:2 = scf.if %26 -> (i1, i32) {
+        %29 = func.call @load_document_embeddings() : () -> i32
+        %30 = arith.cmpi eq, %29, %c0_i32 : i32
+        %31 = arith.cmpi ne, %29, %c0_i32 : i32
+        %32 = arith.select %30, %c1_i32, %27 : i32
+        scf.if %30 {
+          %33 = llvm.mlir.addressof @stderr : !llvm.ptr
+          %34 = llvm.load %33 : !llvm.ptr -> memref<?x!llvm.struct<(i32, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, i32, i32, i64, i16, i8, array<1 x i8>, ptr, i64, ptr, ptr, ptr, ptr, i64, i32, array<20 x i8>)>>
+          %35 = "polygeist.memref2pointer"(%34) : (memref<?x!llvm.struct<(i32, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, i32, i32, i64, i16, i8, array<1 x i8>, ptr, i64, ptr, ptr, ptr, ptr, i64, i32, array<20 x i8>)>>) -> !llvm.ptr
+          %36 = llvm.mlir.addressof @str11 : !llvm.ptr
+          %37 = llvm.getelementptr %36[0, 0] : (!llvm.ptr) -> !llvm.ptr, !llvm.array<29 x i8>
+          %38 = llvm.call @fprintf(%35, %37) vararg(!llvm.func<i32 (ptr, ptr, ...)>) : (!llvm.ptr, !llvm.ptr) -> i32
         }
-        scf.yield %28, %29 : i1, i32
+        scf.yield %31, %32 : i1, i32
       } else {
         scf.yield %false, %3 : i1, i32
       }
-      scf.yield %8, %10, %25#0, %25#1 : i32, i32, i1, i32
+      scf.yield %8, %10, %28#0, %28#1 : i32, i32, i1, i32
     } else {
       scf.yield %0, %0, %false, %3 : i32, i32, i1, i32
     }
@@ -817,7 +763,7 @@ module attributes {dlti.dl_spec = #dlti.dl_spec<#dlti.dl_entry<f64, dense<64> : 
       %16 = arith.sitofp %15 : i64 to f64
       %17 = arith.divf %16, %cst : f64
       %18 = arith.addf %12, %17 : f64
-      %19 = llvm.mlir.addressof @str11 : !llvm.ptr
+      %19 = llvm.mlir.addressof @str12 : !llvm.ptr
       %20 = llvm.getelementptr %19[0, 0] : (!llvm.ptr) -> !llvm.ptr, !llvm.array<17 x i8>
       %21 = llvm.call @printf(%20, %18) vararg(!llvm.func<i32 (ptr, ...)>) : (!llvm.ptr, f64) -> i32
       func.call @output_ranked_docs() : () -> ()
