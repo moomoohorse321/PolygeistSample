@@ -33,9 +33,9 @@
 #include "polygeist/Dialect.h"
 #include "polygeist/Passes/Passes.h"
 
-#include "approxMLIR/Dialect.h"
-#include "approxMLIR/approxMLIROpsDialect.cpp.inc"
-#include "approxMLIR/Passes/Passes.h"
+#include "approx/Dialect.h"
+#include "approx/approxOpsDialect.cpp.inc"
+#include "approx/Passes/Passes.h"
 
 
 
@@ -69,7 +69,7 @@ int main(int argc, char **argv) {
   registry.insert<mlir::polygeist::PolygeistDialect>();
   registry.insert<DLTIDialect>();
   
-  registry.insert<mlir::approxMLIR::approxMLIRDialect>();
+  registry.insert<mlir::approx::approxDialect>();
 
   mlir::registerpolygeistPasses();
   mlir::func::registerInlinerExtension(registry);
@@ -86,10 +86,12 @@ int main(int argc, char **argv) {
   mlir::affine::registerAffinePasses();
 
   
-  mlir::approxMLIR::registerEmitApproxPass();
-  mlir::approxMLIR::registerConfigApproxPass();
-  mlir::approxMLIR::registerPreEmitTransformationPass();
-  mlir::approxMLIR::registerTransformApproxPass();
+  mlir::registerEmitApproxPass();
+  mlir::registerEmitManagementPass();
+  mlir::registerConfigApproxPass();
+  mlir::registerTransformApproxPass();
+  mlir::registerPreEmitTransformationPass();
+  mlir::registerFinalizeApproxPass();
 
   registry.addExtension(+[](MLIRContext *ctx, LLVM::LLVMDialect *dialect) {
     LLVM::LLVMFunctionType::attachInterface<MemRefInsider>(*ctx);
